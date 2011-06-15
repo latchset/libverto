@@ -89,7 +89,7 @@ struct vertoEv {
  * implementation specified. If the implementation specified is not
  * available, NULL is returned.  The parameter 'impl' can specify:
  *   * The full path to an implementation library
- *   * The name of the implementation library (i.e. - "glib" or "ev")
+ *   * The name of the implementation library (i.e. - "glib" or "libev")
  *
  * If impl is NULL, verto will attempt to automatically determine the
  * best implementation to use.
