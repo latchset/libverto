@@ -22,11 +22,14 @@
  * SOFTWARE.
  */
 
-#ifndef VERTO_EV_H_
-#define VERTO_EV_H_
+#ifndef VERTO_LIBEV_H_
+#define VERTO_LIBEV_H_
 
 #include <verto.h>
+#include <ev.h>
 
-vContext *v_context_new_ev();
+struct vertoEvCtx *verto_new_libev();
+struct vertoEvCtx *verto_default_libev();
+struct vertoEvCtx *verto_convert_libev(struct ev_loop* loop);
 
-#endif /* VERTO_EV_H_ */
+#endif /* VERTO_LIBEV_H_ */

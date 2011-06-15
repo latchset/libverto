@@ -26,7 +26,10 @@
 #define VERTO_TEVENT_H_
 
 #include <verto.h>
+#include <tevent.h>
 
-vContext *v_context_new_tevent();
+struct vertoEvCtx *verto_new_tevent();
+struct vertoEvCtx *verto_default_tevent();
+struct vertoEvCtx *verto_convert_tevent(struct tevent_context *ctx);
 
 #endif /* VERTO_TEVENT_H_ */

@@ -18,7 +18,7 @@ m4_ifdef([AM_SILENT_RULES], [
   AC_SUBST(AM_DEFAULT_VERBOSITY)
 ])
 
-PKG_CHECK_MODULES(glib, glib-2.0, have_glib=yes, have_glib=no)
+PKG_CHECK_MODULES(glib, glib-2.0 >= 2.29, have_glib=yes, have_glib=no)
 AC_ARG_WITH(glib,
             [AS_HELP_STRING([--without-glib],
               [build the glib library @<:@automatic@:>@])],
@@ -28,43 +28,43 @@ if test x$with_glib = xyes; then
 	AC_SUBST(glib_CFLAGS)
 	AC_SUBST(glib_LIBS)
 	if test x$have_glib = xno; then
-		echo "glib library requires glib-2.0!"
+		echo "glib library requires glib-2.0 >= 2.29!"
 		exit 1
 	fi
 fi
 AM_CONDITIONAL([WITH_GLIB], [test x$with_glib = xyes])
 
-PKG_CHECK_MODULES(ev, libev, have_ev=yes, have_ev=no)
-AC_ARG_WITH(ev,
-            [AS_HELP_STRING([--without-ev],
-              [build the ev library @<:@automatic@:>@])],
-            [with_ev=no],
-            [test x$have_ev = xyes && with_ev=yes])
-if test x$with_ev = xyes; then
-	AC_SUBST(ev_CFLAGS)
-	AC_SUBST(ev_LIBS)
-	if test x$have_ev = xno; then
-		echo "ev library requires libev!"
+PKG_CHECK_MODULES(libev, libev, have_libev=yes, have_libev=no)
+AC_ARG_WITH(libev,
+            [AS_HELP_STRING([--without-libev],
+              [build the libev library @<:@automatic@:>@])],
+            [with_libev=no],
+            [test x$have_libev = xyes && with_libev=yes])
+if test x$with_libev = xyes; then
+	AC_SUBST(libev_CFLAGS)
+	AC_SUBST(libev_LIBS)
+	if test x$have_libev = xno; then
+		echo "libev library requires libev!"
 		exit 1
 	fi
 fi
-AM_CONDITIONAL([WITH_EV], [test x$with_ev = xyes])
+AM_CONDITIONAL([WITH_LIBEV], [test x$with_libev = xyes])
 
-PKG_CHECK_MODULES(event, libevent >= 2.0, have_event=yes, have_event=no)
-AC_ARG_WITH(event,
-            [AS_HELP_STRING([--without-event],
-              [build the event library @<:@automatic@:>@])],
-            [with_event=no],
-            [test x$have_event = xyes && with_event=yes])
-if test x$with_event = xyes; then
-	AC_SUBST(event_CFLAGS)
-	AC_SUBST(event_LIBS)
-	if test x$have_event = xno; then
-		echo "event library requires libevent!"
+PKG_CHECK_MODULES(libevent, libevent >= 2.0, have_libevent=yes, have_libevent=no)
+AC_ARG_WITH(libevent,
+            [AS_HELP_STRING([--without-libevent],
+              [build the libevent library @<:@automatic@:>@])],
+            [with_libevent=no],
+            [test x$have_libevent = xyes && with_libevent=yes])
+if test x$with_libevent = xyes; then
+	AC_SUBST(libevent_CFLAGS)
+	AC_SUBST(libevent_LIBS)
+	if test x$have_libevent = xno; then
+		echo "libevent library requires libevent >= 2.0!"
 		exit 1
 	fi
 fi
-AM_CONDITIONAL([WITH_EVENT], [test x$with_event = xyes])
+AM_CONDITIONAL([WITH_LIBEVENT], [test x$with_libevent = xyes])
 
 PKG_CHECK_MODULES(tevent, tevent, have_tevent=yes, have_tevent=no)
 AC_ARG_WITH(tevent,
@@ -87,7 +87,7 @@ echo -e ""
 echo -e "LIBRARIES TO BE BUILT"
 echo -e "\tlibverto\t\tyes"
 echo -e "\tlibverto-glib\t\t$with_glib"
-echo -e "\tlibverto-ev\t\t$with_ev"
+echo -e "\tlibverto-libev\t\t$with_libev"
 echo -e "\tlibverto-event\t\t$with_event"
 echo -e "\tlibverto-tevent\t\t$with_tevent"
 echo -e ""

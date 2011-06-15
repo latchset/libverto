@@ -26,7 +26,17 @@
 #define VERTO_GLIB_H_
 
 #include <verto.h>
+#include <glib.h>
 
-vContext *v_context_new_glib();
+struct vertoEvCtx *verto_new_glib();
+struct vertoEvCtx *verto_default_glib();
+
+/**
+ * mc == NULL, ml == NULL -- Use the default main loop
+ *
+ * If mc is specified, a reference is stolen unless mc is the default loop.
+ * A reference is always stolen for ml.
+ */
+struct vertoEvCtx *verto_convert_glib(GMainContext *mc, GMainLoop *ml);
 
 #endif /* VERTO_GLIB_H_ */

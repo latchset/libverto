@@ -22,9 +22,14 @@
  * SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <verto-event.h>
+#ifndef VERTO_LIBEVENT_H_
+#define VERTO_LIBEVENT_H_
 
-VERTO_MODULE(event, event_base_new) {
-	return NULL;
-}
+#include <verto.h>
+#include <event2/event.h>
+
+struct vertoEvCtx *verto_new_event();
+struct vertoEvCtx *verto_default_event();
+struct vertoEvCtx *verto_convert_event(struct event_base *ebase);
+
+#endif /* VERTO_LIBEVENT_H_ */

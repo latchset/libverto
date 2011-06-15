@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#define _GNU_SOURCE // For dladdr()
+#define _GNU_SOURCE /* For dladdr(), asprintf() */
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -34,266 +34,426 @@
 #include <dirent.h>
 #include <dlfcn.h>
 
-#include <verto.h>
-
-struct _vContext {
-	size_t    ref;
-	void     *module;
-	vLoopSpec spec;
-};
-
-struct _vLoop {
-	size_t        ref;
-	vContext     *ctx;
-	vLoopPrivate *priv;
-};
+#include <verto-module.h>
 
 #define  _str(s) # s
 #define __str(s) _str(s)
+#define vnew(type) ((type*) malloc(sizeof(type)))
+#define vnew0(type) ((type*) memset(vnew(type), 0, sizeof(type)))
 
-static vContext *defctx = NULL;
+struct vertoEvCtx {
+    void *dll;
+    void *priv;
+    struct vertoEvCtxFuncs funcs;
+};
 
-static inline vContext *do_load_file(const char *filename, bool reqsym) {
-	void *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
-	if (!dll) {
-		//printf("%s -- %s\n", filename.c_str(), dlerror());
-		return NULL;
-	}
+static inline bool
+do_load_file(const char *filename, bool reqsym, void **dll,
+             struct vertoModule **module)
+{
+    struct vertoModule *mod = *module;
 
-	struct _vModule *module = (struct _vModule*) dlsym(dll, __str(_VERTO_MODULE_TABLE));
-	if (!module || module->vers != _VERTO_MODULE_VERSION)
-		goto error;
+    *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
+    if (!dll) {
+        /* printf("%s -- %s\n", filename.c_str(), dlerror()); */
+        return false;
+    }
 
-	// Check to make sure that we have our required symbol if reqsym == true
-	if (module->symb && reqsym) {
-		void *tmp = dlopen(NULL, 0);
-		if (!tmp || !dlsym(tmp, module->symb)) {
-			if (tmp)
-				dlclose(tmp);
-			goto error;
-		}
-		dlclose(tmp);
-	}
+    mod = (struct vertoModule*) dlsym(dll, __str(_VERTO_MODULE_TABLE));
+    if (!mod || mod->vers != _VERTO_MODULE_VERSION || !mod->new_ctx
+            || !mod->def_ctx)
+        goto error;
 
-	// Get the context creation function
-	vContext *(*makectx)() = (vContext *(*)()) dlsym(dll, module->name);
-	if (!makectx)
-		goto error;
+    /* Check to make sure that we have our required symbol if reqsym == true */
+    if (mod->symb && reqsym) {
+        void *tmp = dlopen(NULL, 0);
+        if (!tmp || !dlsym(tmp, mod->symb)) {
+            if (tmp)
+                dlclose(tmp);
+            goto error;
+        }
+        dlclose(tmp);
+    }
 
-	// Call it
-	vContext *ctx = makectx();
-	if (!ctx)
-		goto error;
+    return true;
 
-	ctx->module = dll;
-	return ctx;
-
-	error:
-		dlclose(dll);
-		return NULL;
+    error:
+        dlclose(dll);
+        return false;
 }
 
-static inline vContext *do_load_dir(const char *dirname, const char *prefix, const char *suffix, bool reqsym) {
-	vContext *ctx = NULL;
-	DIR *dir = opendir(dirname);
-	if (!dir)
-		return NULL;
+static inline bool
+do_load_dir(const char *dirname, const char *prefix, const char *suffix,
+            bool reqsym, void **dll, struct vertoModule **module)
+{
+    *module = NULL;
+    DIR *dir = opendir(dirname);
+    if (!dir)
+        return false;
 
-	struct dirent *ent = NULL;
-	while ((ent = readdir(dir))) {
-		size_t flen = strlen(ent->d_name);
-		size_t slen = strlen(suffix);
+    struct dirent *ent = NULL;
+    while ((ent = readdir(dir))) {
+        size_t flen = strlen(ent->d_name);
+        size_t slen = strlen(suffix);
 
-		if (!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
-			continue;
-		if (strstr(ent->d_name, prefix) != ent->d_name)
-			continue;
-		if (flen < slen || strcmp(ent->d_name + flen - slen, suffix))
-			continue;
+        if (!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
+            continue;
+        if (strstr(ent->d_name, prefix) != ent->d_name)
+            continue;
+        if (flen < slen || strcmp(ent->d_name + flen - slen, suffix))
+            continue;
 
-		char *tmp = (char *) malloc(sizeof(char) * (flen + strlen(dirname) + 2));
-		if (!tmp)
-			continue;
+        char *tmp = NULL;
+        if (asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
+            continue;
 
-		strcpy(tmp, dirname);
-		strcat(tmp, "/");
-		strcat(tmp, ent->d_name);
+        bool success = do_load_file(tmp, reqsym, dll, module);
+        free(tmp);
+        if (success)
+            break;
+        *module = NULL;
+    }
 
-		ctx = do_load_file(tmp, reqsym);
-		free(tmp);
-		if (ctx)
-			break;
-	}
-
-	closedir(dir);
-	return ctx;
+    closedir(dir);
+    return module != NULL;
 }
 
-static inline vLoop *make_loop(vContext *ctx, void *priv) {
-	if (!ctx)
-		return NULL;
+static bool
+load_module(const char *impl, void **dll, struct vertoModule **module)
+{
+    bool success = false;
+    Dl_info dlinfo;
+    char *prefix = NULL;
+    char *suffix = NULL;
+    char *tmp = NULL;
 
-	vLoop *loop = malloc(sizeof(vLoop));
-	if (!loop) {
-		ctx->spec.loop_free(priv);
-		return NULL;
-	}
+    if (!dladdr(verto_convert_funcs, &dlinfo))
+        return NULL;
 
-	loop->ref = 1;
-	loop->ctx = ctx;
-	loop->priv = priv;
-	return loop;
+    suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
+    if (!suffix)
+        return NULL;
+
+    prefix = strndup(dlinfo.dli_fname, suffix - dlinfo.dli_fname + 1);
+    if (!prefix)
+        return NULL;
+    prefix[strlen(prefix) - 1] = '-'; /* Ex: /usr/lib/libverto- */
+
+    if (impl) {
+        /* Try to do a load by the path */
+        success = do_load_file(impl, false, dll, module);
+        if (!success) {
+            /* Try to do a load by the name */
+            tmp = NULL;
+            if (asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
+                success = do_load_file(tmp, false, dll, module);
+                free(tmp);
+            }
+        }
+    } else {
+        /* NULL was passed, so we will use the dirname of
+         * the prefix to try and find any possible plugins */
+        tmp = strdup(prefix);
+        if (tmp) {
+            char *dname = strdup(dirname(tmp));
+            free(tmp);
+
+            tmp = strdup(basename(prefix));
+            free(prefix);
+            prefix = tmp;
+
+            if (dname && prefix) {
+                /* Attempt to find a module we are already linked to */
+                success = do_load_dir(dname, prefix, suffix, true, dll, module);
+                if (!success) {
+#ifdef DEFAULT_LIBRARY
+                    /* Attempt to find the default module */
+                    success = load_module(DEFAULT_LIBRARY, dll, module);
+                    if (!success)
+#endif /* DEFAULT_LIBRARY */
+                    /* Attempt to load any plugin (we're desperate) */
+                    success = do_load_dir(dname, prefix, suffix, false, dll, module);
+                }
+            }
+
+            free(dname);
+        }
+    }
+
+    free(prefix);
+    return success;
 }
 
-vContext *v_context_new(const vLoopSpec *loopspec) {
-	vContext *ctx = malloc(sizeof(vContext));
-	if (!ctx)
-		return NULL;
-	memset(ctx, 0, sizeof(vContext));
-	ctx->ref = 1;
-	ctx->spec = *loopspec; // Copy the spec
-	return ctx;
+struct vertoEvCtx *
+verto_new(const char *impl)
+{
+    void *dll = NULL;
+    struct vertoModule *module = NULL;
+    struct vertoEvCtx *ctx;
+
+    if (!load_module(impl, &dll, &module))
+        return NULL;
+
+    ctx = module->new_ctx();
+    if (ctx)
+        ctx->dll = dll;
+    else
+        dlclose(dll);
+
+    return ctx;
 }
 
-vContext *v_context_load(const char *name_or_path) {
-	vContext *ctx = NULL;
-	Dl_info dlinfo;
+struct vertoEvCtx *
+verto_default(const char *impl)
+{
+    void *dll = NULL;
+    struct vertoModule *module = NULL;
+    struct vertoEvCtx *ctx;
 
-	if (!dladdr(v_context_load+1, &dlinfo))
-		return NULL;
+    if (!load_module(impl, &dll, &module))
+        return NULL;
 
-	char *suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
-	if (!suffix)
-		return NULL;
+    ctx = module->def_ctx();
+    if (ctx)
+        ctx->dll = dll;
+    else
+        dlclose(dll);
 
-	char *prefix = strndup(dlinfo.dli_fname, suffix-dlinfo.dli_fname+1);
-	if (!prefix)
-		return NULL;
-	prefix[strlen(prefix)-1] = '-'; // Ex: /usr/lib/libverto-
-
-	if (name_or_path) {
-		// Try to do a load by the path
-		ctx = do_load_file(name_or_path, false);
-		if (!ctx) {
-			// Try to do a load by the name
-			char *tmp = malloc(strlen(name_or_path) + strlen(prefix) + strlen(suffix) + 1);
-			if (tmp) {
-				strcpy(tmp, prefix);
-				strcat(tmp, name_or_path);
-				strcat(tmp, suffix);
-				ctx = do_load_file(tmp, false);
-				free(tmp);
-			}
-		}
-	} else {
-		// NULL was passed, so we will use the dirname of
-		// the prefix to try and find any possible plugins
-		char *tmp = strdup(prefix);
-		if (tmp) {
-			char *dname = strdup(dirname(tmp));
-			free(tmp);
-
-			tmp = strdup(basename(prefix));
-			free(prefix);
-			prefix = tmp;
-
-			if (dname && prefix) {
-				ctx = do_load_dir(dname, prefix, suffix, true);
-				if (!ctx)
-					ctx = do_load_dir(dname, prefix, suffix, false);
-			}
-
-			free(dname);
-		}
-	}
-
-	free(prefix);
-	return ctx;
+    return ctx;
 }
 
-vContext *v_context_incref(vContext *ctx) {
-	if (ctx)
-		ctx->ref++;
-	return ctx;
+void
+verto_free(struct vertoEvCtx *ctx)
+{
+    if (!ctx)
+        return;
+    if (ctx->dll)
+        dlclose(ctx->dll);
+    ctx->funcs.ctx_free(ctx->priv);
+    free(ctx);
 }
 
-void v_context_decref(vContext *ctx) {
-	if (!ctx || --ctx->ref)
-		return;
-
-	if (ctx->module)
-		dlclose(ctx->module);
-	free(ctx);
-	return;
+void
+verto_run(struct vertoEvCtx *ctx)
+{
+    if (!ctx)
+        return;
+    ctx->funcs.ctx_run(ctx->priv);
 }
 
-vContext *v_context_default_get(void) {
-	return defctx;
+void
+verto_run_once(struct vertoEvCtx *ctx)
+{
+    if (!ctx)
+        return;
+    ctx->funcs.ctx_run_once(ctx->priv);
 }
 
-void      v_context_default_set(vContext *ctx) {
-	v_context_decref(defctx);
-	defctx = v_context_incref(ctx);
+void
+verto_break(struct vertoEvCtx *ctx)
+{
+    if (!ctx)
+        return;
+    ctx->funcs.ctx_break(ctx->priv);
 }
 
-vLoop *v_loop_new(vContext *ctx) {
-	return make_loop(ctx, ctx ? ctx->spec.loop_new() : NULL);
+struct vertoEv *
+verto_add_read(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+               vertoCallback callback, void *priv, int fd)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback || fd < 0)
+        return NULL;
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+    ev = ctx->funcs.ctx_add_read(ctx->priv, priority, callback, priv, fd);
+    if (ev) {
+        ev->ctx      = ctx;
+        ev->type     = VERTO_EV_TYPE_READ;
+        ev->priority = priority;
+        ev->callback = callback;
+        ev->priv     = priv;
+        ev->data.fd  = fd;
+    }
+    return ev;
 }
 
-vLoop *v_loop_default(vContext *ctx) {
-	return make_loop(ctx, ctx ? ctx->spec.loop_default() : NULL);
+struct vertoEv *
+verto_add_write(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+                vertoCallback callback, void *priv, int fd)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback || fd < 0)
+        return NULL;
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+    ev = ctx->funcs.ctx_add_write(ctx->priv, priority, callback, priv, fd);
+    if (ev) {
+        ev->ctx      = ctx;
+        ev->type     = VERTO_EV_TYPE_WRITE;
+        ev->priority = priority;
+        ev->callback = callback;
+        ev->priv     = priv;
+        ev->data.fd  = fd;
+    }
+    return ev;
 }
 
-vLoop *v_loop_convert(vContext *ctx, ...) {
-	va_list args;
-	va_start(args, ctx);
-	vLoop *loop = make_loop(ctx, ctx ? ctx->spec.loop_convert(args) : NULL);
-	va_end(args);
-	return loop;
+struct vertoEv *
+verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+                  vertoCallback callback, void *priv, time_t interval)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback)
+        return NULL;
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+    ev = ctx->funcs.ctx_add_timeout(ctx->priv, priority, callback, priv, interval);
+    if (ev) {
+        ev->ctx           = ctx;
+        ev->type          = VERTO_EV_TYPE_TIMEOUT;
+        ev->priority      = priority;
+        ev->callback      = callback;
+        ev->priv          = priv;
+        ev->data.interval = interval;
+    }
+    return ev;
 }
 
-vLoop *v_loop_incref(vLoop *loop) {
-	if (loop)
-		loop->ref++;
-	return loop;
+struct vertoEv *
+verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+               vertoCallback callback, void *priv)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback)
+        return NULL;
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+    ev = ctx->funcs.ctx_add_idle(ctx->priv, priority, callback, priv);
+    if (ev) {
+        ev->ctx      = ctx;
+        ev->type     = VERTO_EV_TYPE_IDLE;
+        ev->priority = priority;
+        ev->callback = callback;
+        ev->priv     = priv;
+    }
+    return ev;
 }
 
-void v_loop_decref(vLoop *loop) {
-	if (!loop || --loop->ref)
-		return;
+struct vertoEv *
+verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+                 vertoCallback callback, void *priv, int signal)
+{
+    struct vertoEv *ev = NULL;
 
-	vContext *ctx = loop->ctx;
-	loop->ctx->spec.loop_free(loop->priv);
-	v_context_decref(ctx);
-	return;
+    if (!ctx || !callback || signal < 0)
+        return NULL;
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+    ev = ctx->funcs.ctx_add_signal(ctx->priv, priority, callback, priv, signal);
+    if (ev) {
+        ev->ctx         = ctx;
+        ev->type        = VERTO_EV_TYPE_SIGNAL;
+        ev->priority    = priority;
+        ev->callback    = callback;
+        ev->priv        = priv;
+        ev->data.signal = signal;
+    }
+    return ev;
 }
 
-void v_loop_run(vLoop *loop) {
-	if (!loop)
-		return;
-	loop->ctx->spec.loop_run(loop->priv);
+struct vertoEv *
+verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+                vertoCallback callback, void *priv, pid_t child)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback)
+        return NULL;
+    ev = ctx->funcs.ctx_add_child(ctx->priv, priority, callback, priv, child);
+    if (ev) {
+        ev->ctx        = ctx;
+        ev->type       = VERTO_EV_TYPE_CHILD;
+        ev->priority   = priority;
+        ev->callback   = callback;
+        ev->priv       = priv;
+        ev->data.child = child;
+    }
+    return ev;
 }
 
-void v_loop_run_once(vLoop *loop) {
-	if (!loop)
-		return;
-	loop->ctx->spec.loop_run_once(loop->priv);
+void
+verto_del(struct vertoEv *ev)
+{
+    if (!ev)
+        return;
+    ev->ctx->funcs.ctx_del(ev->ctx->priv, ev);
 }
 
-void v_loop_break(vLoop *loop) {
-	if (!loop)
-		return;
-	loop->ctx->spec.loop_break(loop->priv);
+/*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
+
+struct vertoEvCtx *
+verto_new_funcs(const struct vertoEvCtxFuncs *funcs)
+{
+    void *priv = NULL;
+    struct vertoEvCtx *ctx = NULL;
+
+    if (!funcs)
+        return NULL;
+
+    priv = funcs->ctx_new();
+    if (!priv)
+        return NULL;
+
+    ctx = verto_convert_funcs(funcs, priv);
+    if (!ctx)
+        funcs->ctx_free(priv);
+
+    return ctx;
 }
 
-vHook *v_loop_hook_add(vLoop *loop, vCallback callback, void *data, vHookType type, long long spec, vHookPriority priority) {
-	if (!loop)
-		return 0;
-	return loop->ctx->spec.loop_hook_add(loop->priv, loop, callback, data, type, spec, priority);
+struct vertoEvCtx *
+verto_default_funcs(const struct vertoEvCtxFuncs *funcs)
+{
+    void *priv = NULL;
+    struct vertoEvCtx *ctx = NULL;
+
+    if (!funcs)
+        return NULL;
+
+    priv = funcs->ctx_default();
+    if (!priv)
+        return NULL;
+
+    ctx = verto_convert_funcs(funcs, priv);
+    if (!ctx)
+        funcs->ctx_free(priv);
+
+    return ctx;
 }
 
-void v_loop_hook_del(vLoop *loop, vHook *hook) {
-	if (!loop)
-		return;
-	loop->ctx->spec.loop_hook_del(loop->priv, hook);
+struct vertoEvCtx *
+verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
+{
+    struct vertoEvCtx *ctx = NULL;
+
+    if (!funcs || !ctx_private)
+        return NULL;
+
+    ctx = vnew0(struct vertoEvCtx);
+    if (!ctx)
+        return NULL;
+
+    ctx->priv = ctx_private;
+    ctx->funcs = *funcs;
+    return ctx;
 }
