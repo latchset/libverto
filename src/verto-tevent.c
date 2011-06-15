@@ -45,7 +45,6 @@ struct teventEv {
         struct tevent_signal *signal;
         struct tevent_timer *timer;
     } tev;
-    struct tevent_context *ctx;
 };
 
 static void *
