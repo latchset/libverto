@@ -18,7 +18,7 @@ m4_ifdef([AM_SILENT_RULES], [
   AC_SUBST(AM_DEFAULT_VERBOSITY)
 ])
 
-PKG_CHECK_MODULES(glib, glib-2.0 >= 2.29, have_glib=yes, have_glib=no)
+PKG_CHECK_MODULES(glib, glib-2.0, have_glib=yes, have_glib=no)
 AC_ARG_WITH(glib,
             [AS_HELP_STRING([--without-glib],
               [build the glib library @<:@automatic@:>@])],
@@ -28,7 +28,7 @@ if test x$with_glib = xyes; then
 	AC_SUBST(glib_CFLAGS)
 	AC_SUBST(glib_LIBS)
 	if test x$have_glib = xno; then
-		echo "glib library requires glib-2.0 >= 2.29!"
+		echo "glib library requires glib-2.0!"
 		exit 1
 	fi
 fi
