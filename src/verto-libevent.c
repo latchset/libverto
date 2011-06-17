@@ -24,16 +24,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <verto-libevent.h>
 #include <verto-module.h>
 
 static struct event_base *defctx;
-
-struct libeventEv {
-    struct vertoEv ev;
-    struct event *event;
-};
 
 static void *
 libevent_ctx_new()
@@ -77,76 +73,52 @@ libevent_ctx_break(void *priv)
 static void
 libevent_callback(evutil_socket_t socket, short type, void *data)
 {
-    struct libeventEv *ev = (struct libeventEv*) data;
-    ev->ev.callback(&ev->ev);
+    verto_call(data);
 }
 
-#define add_ev(tv, evnew) \
-    struct libeventEv *ev = malloc(sizeof(struct libeventEv)); \
-    if (ev) { \
-        memset(ev, 0, sizeof(struct libeventEv)); \
-        ev->event = evnew; \
-        if (!ev->event) { \
-            free(ev); \
-            ev = NULL; \
-        } else { \
-            event_add(ev->event, tv); \
-        } \
-    } \
-    return &ev->ev
-
-static struct vertoEv *
-libevent_ctx_add_read(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data, int fd)
+static int
+libevent_ctx_add(void *ctx, struct vertoEv *ev)
 {
-    add_ev(NULL, event_new(priv, fd, EV_READ | EV_PERSIST, libevent_callback, ev));
-}
-
-static struct vertoEv *
-libevent_ctx_add_write(void *priv, enum vertoEvPriority priority,
-                   vertoCallback callback, void *data, int fd)
-{
-    add_ev(NULL, event_new(priv, fd, EV_WRITE | EV_PERSIST, libevent_callback, ev));
-}
-
-static struct vertoEv *
-libevent_ctx_add_timeout(void *priv, enum vertoEvPriority priority,
-                     vertoCallback callback, void *data, time_t interval)
-{
+    struct event *priv = NULL;
+    struct timeval *timeout = NULL;
     struct timeval tv;
-    tv.tv_sec = interval / 1000;
-    tv.tv_usec = interval % 1000 * 1000;
-    add_ev(&tv, event_new(priv, -1, EV_TIMEOUT | EV_PERSIST, libevent_callback, ev));
-}
 
-static struct vertoEv *
-libevent_ctx_add_idle(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data)
-{
-    return NULL;
-}
+    switch (verto_get_type(ev)) {
+        case VERTO_EV_TYPE_READ:
+            priv = event_new(ctx, verto_get_fd(ev), EV_READ | EV_PERSIST, libevent_callback, ev);
+            break;
+        case VERTO_EV_TYPE_WRITE:
+            priv = event_new(ctx, verto_get_fd(ev), EV_WRITE | EV_PERSIST, libevent_callback, ev);
+            break;
+        case VERTO_EV_TYPE_TIMEOUT:
+            timeout = &tv;
+            tv.tv_sec = verto_get_interval(ev) / 1000;
+            tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
+            priv = event_new(ctx, -1, EV_TIMEOUT | EV_PERSIST, libevent_callback, ev);
+            break;
+        case VERTO_EV_TYPE_SIGNAL:
+            priv = event_new(ctx, verto_get_signal(ev), EV_SIGNAL | EV_PERSIST, libevent_callback, ev);
+            break;
+        case VERTO_EV_TYPE_IDLE:
+        case VERTO_EV_TYPE_CHILD:
+        default:
+            return -1; /* Not supported */
+    }
 
-static struct vertoEv *
-libevent_ctx_add_signal(void *priv, enum vertoEvPriority priority,
-                    vertoCallback callback, void *data, int signal)
-{
-    add_ev(NULL, event_new(priv, -1, EV_SIGNAL | EV_PERSIST, libevent_callback, ev));
-}
+    if (!priv)
+        return ENOMEM;
 
-static struct vertoEv *
-libevent_ctx_add_child(void *priv, enum vertoEvPriority priority,
-                                    vertoCallback callback, void *data,
-                                    pid_t pid)
-{
-    return NULL;
+    event_add(priv, timeout);
+    verto_set_module_private(ev, priv);
+    return 0;
 }
 
 static void
-libevent_ctx_del(void *priv, struct vertoEv *ev)
+libevent_ctx_del(void *ctx, struct vertoEv *ev)
 {
-    event_del(((struct libeventEv*) ev)->event);
-    event_free(((struct libeventEv*) ev)->event);
-    free(ev);
+    struct event *priv = (struct event *) verto_get_module_private(ev);
+    event_del(priv);
+    event_free(priv);
 }
 
 VERTO_MODULE(libevent, event_base_init);

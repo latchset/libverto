@@ -24,14 +24,10 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <verto-libev.h>
 #include <verto-module.h>
-
-struct libevEv {
-    struct vertoEv ev;
-    void *watcher;
-};
 
 static void *
 libev_ctx_new()
@@ -46,122 +42,106 @@ libev_ctx_default()
 }
 
 static void
-libev_ctx_free(void *priv)
+libev_ctx_free(void *ctx)
 {
-    if (priv != EV_DEFAULT)
-        ev_loop_destroy(priv);
+    if (ctx != EV_DEFAULT)
+        ev_loop_destroy(ctx);
 }
 
 static void
-libev_ctx_run(void *priv)
+libev_ctx_run(void *ctx)
 {
-    ev_run(priv, 0);
+    ev_run(ctx, 0);
 }
 
 static void
-libev_ctx_run_once(void *priv)
+libev_ctx_run_once(void *ctx)
 {
-    ev_run(priv, EVRUN_ONCE);
+    ev_run(ctx, EVRUN_ONCE);
 }
 
 static void
-libev_ctx_break(void *priv)
+libev_ctx_break(void *ctx)
 {
-    ev_break(priv, EVBREAK_ONE);
+    ev_break(ctx, EVBREAK_ONE);
 }
 
-#define setuptype(type, ...) \
-    struct libevEv *ev = malloc(sizeof(struct libevEv)); \
-    if (ev) { \
-    	memset(ev, 0, sizeof(struct libevEv)); \
-        ev->watcher = malloc(sizeof(ev_ ## type)); \
-        if (!ev->watcher) goto error; \
-        ev_ ## type ## _init((ev_ ## type *) ev->watcher, __VA_ARGS__); \
-        ((ev_ ## type *) ev->watcher)->data = ev; \
-        ev_ ## type ## _start(priv, ev->watcher); \
-        return &ev->ev; \
-    } \
-    error: \
-        free(ev); \
-        return NULL
+static void
+libev_callback(EV_P_ ev_watcher *w, int revents)
+{
+    verto_call(w->data);
+}
 
-#define setupcb(type) \
-    static void type ## _cb (EV_P_ ev_ ## type *w, int revents) { \
-        struct libevEv *ev = ((struct libevEv*) w->data); \
-        ev->ev.callback(&ev->ev); \
+#define setuptype(type, priv, ...) \
+    type ## w = malloc(sizeof(ev_ ## type)); \
+    if (!type ## w) \
+        return ENOMEM; \
+    ev_ ## type ## _init(type ## w, (EV_CB(type, (*))) __VA_ARGS__); \
+    type ## w->data = priv; \
+    ev_ ## type ## _start(ctx, type ## w); \
+    verto_set_module_private(ev, type ## w)
+
+static int
+libev_ctx_add(void *ctx, struct vertoEv *ev)
+{
+    ev_io *iow = NULL;
+    ev_timer *timerw = NULL;
+    ev_idle *idlew = NULL;
+    ev_signal *signalw = NULL;
+    ev_child *childw = NULL;
+    ev_tstamp interval;
+
+    switch (verto_get_type(ev)) {
+        case VERTO_EV_TYPE_READ:
+            setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_READ);
+            break;
+        case VERTO_EV_TYPE_WRITE:
+            setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_WRITE);
+            break;
+        case VERTO_EV_TYPE_TIMEOUT:
+            interval = ((ev_tstamp) verto_get_interval(ev)) / 1000.0;
+            setuptype(timer, ev, libev_callback, interval, interval);
+            break;
+        case VERTO_EV_TYPE_IDLE:
+            setuptype(idle, ev, libev_callback);
+            break;
+        case VERTO_EV_TYPE_SIGNAL:
+            setuptype(signal, ev, libev_callback, verto_get_signal(ev));
+            break;
+        case VERTO_EV_TYPE_CHILD:
+            setuptype(child, ev, libev_callback, verto_get_pid(ev), 0);
+            break;
+        default:
+            return -1; /* Not supported */
     }
 
-setupcb(io)
-setupcb(idle)
-setupcb(timer)
-setupcb(signal)
-setupcb(child)
-
-static struct vertoEv *
-libev_ctx_add_read(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data, int fd)
-{
-    setuptype(io, io_cb, fd, EV_READ);
-}
-
-static struct vertoEv *
-libev_ctx_add_write(void *priv, enum vertoEvPriority priority,
-                   vertoCallback callback, void *data, int fd)
-{
-    setuptype(io, io_cb, fd, EV_WRITE);
-}
-
-static struct vertoEv *
-libev_ctx_add_timeout(void *priv, enum vertoEvPriority priority,
-                     vertoCallback callback, void *data, time_t interval)
-{
-    setuptype(timer, timer_cb, ((ev_tstamp) interval) / 1000.0, ((ev_tstamp) interval) / 1000.0);
-}
-
-static struct vertoEv *
-libev_ctx_add_idle(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data)
-{
-    setuptype(idle, idle_cb);
-}
-
-static struct vertoEv *
-libev_ctx_add_signal(void *priv, enum vertoEvPriority priority,
-                    vertoCallback callback, void *data, int signal)
-{
-    setuptype(signal, signal_cb, signal);
-}
-
-static struct vertoEv *
-libev_ctx_add_child(void *priv, enum vertoEvPriority priority,
-                                    vertoCallback callback, void *data,
-                                    pid_t pid)
-{
-    setuptype(child, child_cb, pid, 0);
+    return 0;
 }
 
 static void
-libev_ctx_del(void *priv, struct vertoEv *ev)
+libev_ctx_del(void *ctx, struct vertoEv *ev)
 {
-    if (!priv || !ev)
+    void *priv = verto_get_module_private(ev);
+    if (!priv)
         return;
 
-    switch (ev->type) {
-    case VERTO_EV_TYPE_READ:
-        ev_io_stop(priv, ((struct libevEv*) ev)->watcher);
-    case VERTO_EV_TYPE_WRITE:
-        ev_io_stop(priv, ((struct libevEv*) ev)->watcher);
-    case VERTO_EV_TYPE_TIMEOUT:
-        ev_timer_stop(priv, ((struct libevEv*) ev)->watcher);
-    case VERTO_EV_TYPE_IDLE:
-        ev_idle_stop(priv, ((struct libevEv*) ev)->watcher);
-    case VERTO_EV_TYPE_SIGNAL:
-        ev_signal_stop(priv, ((struct libevEv*) ev)->watcher);
-    case VERTO_EV_TYPE_CHILD:
-        ev_child_stop(priv, ((struct libevEv*) ev)->watcher);
+    switch (verto_get_type(ev)) {
+        case VERTO_EV_TYPE_READ:
+        case VERTO_EV_TYPE_WRITE:
+            ev_io_stop(ctx, priv);
+        case VERTO_EV_TYPE_TIMEOUT:
+            ev_timer_stop(ctx, priv);
+        case VERTO_EV_TYPE_IDLE:
+            ev_idle_stop(ctx, priv);
+        case VERTO_EV_TYPE_SIGNAL:
+            ev_signal_stop(ctx, priv);
+        case VERTO_EV_TYPE_CHILD:
+            ev_child_stop(ctx, priv);
+        default:
+            break;
     }
 
-    free(ev);
+    free(priv);
 }
 
 VERTO_MODULE(libev, ev_loop_new);

@@ -32,8 +32,6 @@
 struct vertoEvCtx;
 struct vertoEv;
 
-typedef void (*vertoCallback)(struct vertoEv *ev);
-
 enum vertoEvType {
     VERTO_EV_TYPE_READ = 1,
     VERTO_EV_TYPE_WRITE = 1 << 1,
@@ -52,20 +50,7 @@ enum vertoEvPriority {
     _VERTO_EV_PRIORITY_MAX = VERTO_EV_PRIORITY_HIGH
 };
 
-struct vertoEv {
-    struct vertoEvCtx *ctx;
-    enum vertoEvType type;
-    enum vertoEvPriority priority;
-    vertoCallback callback;
-    void *priv;
-    union {
-        int fd;
-        int signal;
-        time_t interval;
-        pid_t child;
-        void *rsvd; /* Reserved for future expansion */
-    } data;
-};
+typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
 
 /**
  * Creates a new event context using an optionally specified implementation.
@@ -118,7 +103,12 @@ verto_new(const char *impl);
 /**
  * Gets the default event context using an optionally specified implementation.
  *
- * You probably don't want this function.  See verto_new() for details.
+ * This function is essentially a singleton version of verto_new().  However,
+ * since this function must return the same loop as the *_default() call of
+ * the underlying implementation (if such a function exists), it is *not* a
+ * global singleton, but a per-implementation singleton.
+ *
+ * In all other respects, verto_default() acts exactly like verto_new().
  *
  * @see verto_new()
  * @param impl The implementation to use, or NULL.
@@ -284,7 +274,67 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  */
 struct vertoEv *
 verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                vertoCallback callback, void *priv, pid_t child);
+                vertoCallback callback, void *priv, pid_t pid);
+
+/**
+ * Calls the callback of the vertoEv.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param ev The vertoEv
+ * @return The vertoEv type
+ */
+void
+verto_call(struct vertoEv *ev);
+
+/**
+ * Gets the private pointer of the vertoEv.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param ev The vertoEv
+ * @return The vertoEv private pointer
+ */
+void *
+verto_get_private(const struct vertoEv *ev);
+
+/**
+ * Gets the type of the vertoEv.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param ev The vertoEv
+ * @return The vertoEv type
+ */
+enum vertoEvType
+verto_get_type(const struct vertoEv *ev);
+
+/**
+ * Gets the priority of the vertoEv.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param ev The vertoEv
+ * @return The vertoEv priority
+ */
+enum vertoEvPriority
+verto_get_priority(const struct vertoEv *ev);
 
 /**
  * Gets the file descriptor associated with a read/write vertoEv.
@@ -294,9 +344,8 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * @param ev The vertoEv to retrieve the file descriptor from.
  * @return The file descriptor, or -1 if not a read/write event.
  */
-#define verto_get_fd(ev) \
-    (((ev)->type & (VERTO_EV_TYPE_READ | VERTO_EV_TYPE_WRITE)) \
-            ? (ev)->data.fd : (int) -1)
+int
+verto_get_fd(const struct vertoEv *ev);
 
 /**
  * Gets the interval associated with a timeout vertoEv.
@@ -305,9 +354,8 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * @param ev The vertoEv to retrieve the interval from.
  * @return The interval, or 0 if not a timeout event.
  */
-#define verto_get_interval(ev) \
-    (((ev)->type & VERTO_EV_TYPE_TIMEOUT) \
-            ? (ev)->data.timeout : (time_t) 0)
+time_t
+verto_get_interval(const struct vertoEv *ev);
 
 /**
  * Gets the signal associated with a signal vertoEv.
@@ -316,9 +364,8 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * @param ev The vertoEv to retrieve the signal from.
  * @return The signal, or -1 if not a signal event.
  */
-#define verto_get_signal(ev) \
-    (((ev)->type & VERTO_EV_TYPE_SIGNAL) \
-            ? (ev)->data.signal : (int) -1)
+int
+verto_get_signal(const struct vertoEv *ev);
 
 /**
  * Gets the pid associated with a child vertoEv.
@@ -327,9 +374,8 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * @param ev The vertoEv to retrieve the file descriptor from.
  * @return The pid, or 0 if not a child event.
  */
-#define verto_get_pid(ev) \
-    (((ev)->type & VERTO_EV_TYPE_CHILD) \
-            ? (ev)->data.child : (pid_t) 0)
+pid_t
+verto_get_pid(const struct vertoEv *ev);
 
 /**
  * Removes an event from from the event context and frees it.

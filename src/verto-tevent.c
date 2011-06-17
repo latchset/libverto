@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <verto-tevent.h>
 #include <verto-module.h>
@@ -36,15 +37,6 @@ static struct teventEvCtx *defctx;
 struct teventEvCtx {
     struct tevent_context *ctx;
     bool exit;
-};
-
-struct teventEv {
-    struct vertoEv ev;
-    union {
-        struct tevent_fd *fd;
-        struct tevent_signal *signal;
-        struct tevent_timer *timer;
-    } tev;
 };
 
 static void *
@@ -96,123 +88,60 @@ tevent_ctx_break(void *priv)
     texit(priv) = true;
 }
 
-static void
-fd_cb(struct tevent_context *c, struct tevent_fd *fd, uint16_t fl, void *data)
-{
-    struct teventEv *tev = (struct teventEv *) data;
-    tev->ev.callback(&tev->ev);
-}
-
-static struct vertoEv *
-tevent_ctx_add_read(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data, int fd)
-{
-    struct teventEv *ev = talloc_zero(tctx(priv), struct teventEv);
-    if (ev) {
-        ev->tev.fd = tevent_add_fd(tctx(priv), tctx(priv), fd,
-                                   TEVENT_FD_READ, fd_cb, ev);
-        if (!ev->tev.fd) {
-            talloc_free(ev);
-            ev = NULL;
-        }
+#define definecb(type, ...) \
+    static void tevent_ ## type ## _cb(struct tevent_context *c, \
+                                       struct tevent_ ## type *e, \
+                                       __VA_ARGS__, void *data) { \
+        verto_call(data); \
     }
-    return &ev->ev;
-}
 
-static struct vertoEv *
-tevent_ctx_add_write(void *priv, enum vertoEvPriority priority,
-                   vertoCallback callback, void *data, int fd)
-{
-    struct teventEv *ev = talloc_zero(tctx(priv), struct teventEv);
-    if (ev) {
-        ev->tev.fd = tevent_add_fd(tctx(priv), tctx(priv), fd,
-                                   TEVENT_FD_WRITE, fd_cb, ev);
-        if (!ev->tev.fd) {
-            talloc_free(ev);
-            ev = NULL;
-        }
-    }
-    return &ev->ev;
-}
+definecb(fd, uint16_t fl)
+definecb(timer, struct timeval ct)
+definecb(signal, int signum, int count, void *siginfo)
 
-static void
-timer_cb(struct tevent_context *c, struct tevent_timer *te,
-         struct timeval ct, void *data)
+static int
+tevent_ctx_add(void *ctx, struct vertoEv *ev)
 {
     struct timeval tv;
-    struct teventEv *tev = (struct teventEv *) data;
+    void *priv = NULL;
 
-    tev->ev.callback(&tev->ev);
-
-    /* Make the event recur */
-    tv.tv_sec = tev->ev.data.interval / 1000;
-    tv.tv_usec = tev->ev.data.interval % 1000 * 1000;
-    tev->tev.timer = tevent_add_timer(c, c, tv, timer_cb, tev);
-}
-
-static struct vertoEv *
-tevent_ctx_add_timeout(void *priv, enum vertoEvPriority priority,
-                     vertoCallback callback, void *data, time_t interval)
-{
-    struct timeval tv;
-
-    struct teventEv *ev = talloc_zero(tctx(priv), struct teventEv);
-    if (ev) {
-        tv.tv_sec = interval / 1000;
-        tv.tv_usec = interval % 1000 * 1000;
-        ev->tev.timer = tevent_add_timer(tctx(priv), tctx(priv),
-                                         tv, timer_cb, ev);
-        if (!ev->tev.timer) {
-            talloc_free(ev);
-            ev = NULL;
-        }
+    switch (verto_get_type(ev)) {
+        case VERTO_EV_TYPE_READ:
+            priv = tevent_add_fd(tctx(priv), tctx(priv), verto_get_fd(ev),
+                                 TEVENT_FD_READ, tevent_fd_cb, ev);
+            break;
+        case VERTO_EV_TYPE_WRITE:
+            priv = tevent_add_fd(tctx(priv), tctx(priv), verto_get_fd(ev),
+                                 TEVENT_FD_WRITE, tevent_fd_cb, ev);
+            break;
+        case VERTO_EV_TYPE_TIMEOUT:
+            tv.tv_sec = verto_get_interval(ev) / 1000;
+            tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
+            priv = tevent_add_timer(tctx(priv), tctx(priv), tv,
+                                    tevent_timer_cb, ev);
+            break;
+        case VERTO_EV_TYPE_SIGNAL:
+            priv = tevent_add_signal(tctx(priv), tctx(priv),
+                                     verto_get_signal(ev), 0,
+                                     tevent_signal_cb, ev);
+            break;
+        case VERTO_EV_TYPE_IDLE:
+        case VERTO_EV_TYPE_CHILD:
+        default:
+            return -1; /* Not supported */
     }
-    return &ev->ev;
-}
 
-static struct vertoEv *
-tevent_ctx_add_idle(void *priv, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data)
-{
-    return NULL; /* Not currently supported */
-}
+    if (!priv)
+        return ENOMEM;
 
-static void
-signal_cb(struct tevent_context *c, struct tevent_signal *se,
-          int signum, int count, void *siginfo, void *data)
-{
-    struct teventEv *tev = (struct teventEv *) data;
-    tev->ev.callback(&tev->ev);
-}
-
-static struct vertoEv *
-tevent_ctx_add_signal(void *priv, enum vertoEvPriority priority,
-                    vertoCallback callback, void *data, int signal)
-{
-    struct teventEv *ev = talloc_zero(tctx(priv), struct teventEv);
-    if (ev) {
-        ev->tev.signal = tevent_add_signal(tctx(priv), tctx(priv), signal,
-                                           0, signal_cb, ev);
-        if (!ev->tev.signal) {
-            talloc_free(ev);
-            ev = NULL;
-        }
-    }
-    return &ev->ev;
-}
-
-static struct vertoEv *
-tevent_ctx_add_child(void *priv, enum vertoEvPriority priority,
-                                    vertoCallback callback, void *data,
-                                    pid_t pid)
-{
-    return NULL; /* Not currently supported */
+    verto_set_module_private(ev, priv);
+    return 0;
 }
 
 static void
 tevent_ctx_del(void *priv, struct vertoEv *ev)
 {
-    talloc_free(ev);
+    talloc_free(verto_set_module_private(ev, NULL));
 }
 
 VERTO_MODULE(tevent, g_main_context_default);

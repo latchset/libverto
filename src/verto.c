@@ -43,8 +43,23 @@
 
 struct vertoEvCtx {
     void *dll;
-    void *priv;
+    void *modpriv;
     struct vertoEvCtxFuncs funcs;
+};
+
+struct vertoEv {
+    struct vertoEvCtx *ctx;
+    enum vertoEvType type;
+    enum vertoEvPriority priority;
+    vertoCallback callback;
+    void *priv;
+    void *modpriv;
+    union {
+        int fd;
+        int signal;
+        time_t interval;
+        pid_t pid;
+    } option;
 };
 
 static inline bool
@@ -172,7 +187,8 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
                     if (!success)
 #endif /* DEFAULT_LIBRARY */
                     /* Attempt to load any plugin (we're desperate) */
-                    success = do_load_dir(dname, prefix, suffix, false, dll, module);
+                    success = do_load_dir(dname, prefix, suffix, false, dll,
+                                          module);
                 }
             }
 
@@ -189,7 +205,7 @@ verto_new(const char *impl)
 {
     void *dll = NULL;
     struct vertoModule *module = NULL;
-    struct vertoEvCtx *ctx;
+    struct vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
@@ -208,7 +224,7 @@ verto_default(const char *impl)
 {
     void *dll = NULL;
     struct vertoModule *module = NULL;
-    struct vertoEvCtx *ctx;
+    struct vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
@@ -229,7 +245,7 @@ verto_free(struct vertoEvCtx *ctx)
         return;
     if (ctx->dll)
         dlclose(ctx->dll);
-    ctx->funcs.ctx_free(ctx->priv);
+    ctx->funcs.ctx_free(ctx->modpriv);
     free(ctx);
 }
 
@@ -238,7 +254,7 @@ verto_run(struct vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run(ctx->priv);
+    ctx->funcs.ctx_run(ctx->modpriv);
 }
 
 void
@@ -246,7 +262,7 @@ verto_run_once(struct vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run_once(ctx->priv);
+    ctx->funcs.ctx_run_once(ctx->modpriv);
 }
 
 void
@@ -254,141 +270,149 @@ verto_break(struct vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_break(ctx->priv);
+    ctx->funcs.ctx_break(ctx->modpriv);
 }
+
+static inline struct vertoEv *
+make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+        vertoCallback callback, void *priv, enum vertoEvType type)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback)
+        return NULL;
+
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+
+    ev = malloc(sizeof(struct vertoEv));
+    if (ev) {
+        ev->ctx        = ctx;
+        ev->type       = type;
+        ev->priority   = priority;
+        ev->callback   = callback;
+        ev->priv       = priv;
+    }
+
+    return ev;
+}
+
+#define doadd(set, type) \
+    struct vertoEv *ev = make_ev(ctx, priority, callback, priv, type); \
+    if (ev) { \
+        set; \
+        if (ctx->funcs.ctx_add(ctx->modpriv, ev) != 0) { \
+            free(ev); \
+            return NULL; \
+        } \
+    } \
+    return ev;
 
 struct vertoEv *
 verto_add_read(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                vertoCallback callback, void *priv, int fd)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback || fd < 0)
+    if (fd < 0)
         return NULL;
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-    ev = ctx->funcs.ctx_add_read(ctx->priv, priority, callback, priv, fd);
-    if (ev) {
-        ev->ctx      = ctx;
-        ev->type     = VERTO_EV_TYPE_READ;
-        ev->priority = priority;
-        ev->callback = callback;
-        ev->priv     = priv;
-        ev->data.fd  = fd;
-    }
-    return ev;
+    doadd(ev->option.fd = fd, VERTO_EV_TYPE_READ);
 }
+
 
 struct vertoEv *
 verto_add_write(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                 vertoCallback callback, void *priv, int fd)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback || fd < 0)
+    if (fd < 0)
         return NULL;
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-    ev = ctx->funcs.ctx_add_write(ctx->priv, priority, callback, priv, fd);
-    if (ev) {
-        ev->ctx      = ctx;
-        ev->type     = VERTO_EV_TYPE_WRITE;
-        ev->priority = priority;
-        ev->callback = callback;
-        ev->priv     = priv;
-        ev->data.fd  = fd;
-    }
-    return ev;
+    doadd(ev->option.fd = fd, VERTO_EV_TYPE_WRITE);
 }
 
 struct vertoEv *
 verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                   vertoCallback callback, void *priv, time_t interval)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback)
-        return NULL;
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-    ev = ctx->funcs.ctx_add_timeout(ctx->priv, priority, callback, priv, interval);
-    if (ev) {
-        ev->ctx           = ctx;
-        ev->type          = VERTO_EV_TYPE_TIMEOUT;
-        ev->priority      = priority;
-        ev->callback      = callback;
-        ev->priv          = priv;
-        ev->data.interval = interval;
-    }
-    return ev;
+    doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 struct vertoEv *
 verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                vertoCallback callback, void *priv)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback)
-        return NULL;
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-    ev = ctx->funcs.ctx_add_idle(ctx->priv, priority, callback, priv);
-    if (ev) {
-        ev->ctx      = ctx;
-        ev->type     = VERTO_EV_TYPE_IDLE;
-        ev->priority = priority;
-        ev->callback = callback;
-        ev->priv     = priv;
-    }
-    return ev;
+    doadd(, VERTO_EV_TYPE_IDLE);
 }
 
 struct vertoEv *
 verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                  vertoCallback callback, void *priv, int signal)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback || signal < 0)
+    if (signal < 0)
         return NULL;
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-    ev = ctx->funcs.ctx_add_signal(ctx->priv, priority, callback, priv, signal);
-    if (ev) {
-        ev->ctx         = ctx;
-        ev->type        = VERTO_EV_TYPE_SIGNAL;
-        ev->priority    = priority;
-        ev->callback    = callback;
-        ev->priv        = priv;
-        ev->data.signal = signal;
-    }
-    return ev;
+    doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
 
 struct vertoEv *
 verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                vertoCallback callback, void *priv, pid_t child)
+                vertoCallback callback, void *priv, pid_t pid)
 {
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback)
+    if (pid < 1)
         return NULL;
-    ev = ctx->funcs.ctx_add_child(ctx->priv, priority, callback, priv, child);
-    if (ev) {
-        ev->ctx        = ctx;
-        ev->type       = VERTO_EV_TYPE_CHILD;
-        ev->priority   = priority;
-        ev->callback   = callback;
-        ev->priv       = priv;
-        ev->data.child = child;
-    }
-    return ev;
+    doadd(ev->option.pid = pid, VERTO_EV_TYPE_CHILD);
+}
+
+void
+verto_call(struct vertoEv *ev)
+{
+    ev->callback(ev->ctx, ev);
+}
+
+void *
+verto_get_private(const struct vertoEv *ev)
+{
+    return ev->priv;
+}
+
+enum vertoEvType
+verto_get_type(const struct vertoEv *ev)
+{
+    return ev->type;
+}
+
+enum vertoEvPriority
+verto_get_priority(const struct vertoEv *ev)
+{
+    return ev->priority;
+}
+
+int
+verto_get_fd(const struct vertoEv *ev)
+{
+    if (ev && (ev->type & (VERTO_EV_TYPE_READ | VERTO_EV_TYPE_WRITE)))
+        return ev->option.fd;
+    return -1;
+}
+
+time_t
+verto_get_interval(const struct vertoEv *ev)
+{
+    if (ev && (ev->type & VERTO_EV_TYPE_TIMEOUT))
+        return ev->option.interval;
+    return 0;
+}
+
+int
+verto_get_signal(const struct vertoEv *ev)
+{
+    if (ev && (ev->type & VERTO_EV_TYPE_SIGNAL))
+        return ev->option.signal;
+    return -1;
+}
+
+pid_t
+verto_get_pid(const struct vertoEv *ev) {
+    if (ev && ev->type == VERTO_EV_TYPE_CHILD)
+        return ev->option.pid;
+    return 0;
 }
 
 void
@@ -396,7 +420,7 @@ verto_del(struct vertoEv *ev)
 {
     if (!ev)
         return;
-    ev->ctx->funcs.ctx_del(ev->ctx->priv, ev);
+    ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev);
 }
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
@@ -453,7 +477,21 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
     if (!ctx)
         return NULL;
 
-    ctx->priv = ctx_private;
+    ctx->modpriv = ctx_private;
     ctx->funcs = *funcs;
     return ctx;
+}
+
+void *
+verto_get_module_private(const struct vertoEv *ev)
+{
+    return ev->modpriv;
+}
+
+void *
+verto_set_module_private(struct vertoEv *ev, void *priv)
+{
+    void *oldpriv = ev->modpriv;
+    ev->modpriv = priv;
+    return oldpriv;
 }

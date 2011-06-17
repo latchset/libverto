@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#include <errno.h>
+
 #include <verto-glib.h>
 #include <verto-module.h>
 
@@ -34,7 +36,6 @@ struct glibEvCtx {
 };
 
 struct glibEv {
-    struct vertoEv ev;
     GSource *src;
     guint tag;
     GIOChannel *chan;
@@ -107,80 +108,69 @@ glib_ctx_break(void *lp)
 static gboolean
 glib_callback(gpointer data)
 {
-    struct glibEv *ev = ((struct glibEv*) data);
-    if (ev)
-        ev->ev.callback(&ev->ev);
+    verto_call(data);
     return TRUE;
 }
 
-#define ctx_add(makesrc) \
-    struct glibEv *ev = g_new0(struct glibEv, 1); \
-    if (!ev) \
-        goto error; \
-    makesrc; \
-    if (!ev->src) \
-        goto error; \
-    g_source_set_can_recurse(ev->src, FALSE); \
-    g_source_set_priority(ev->src, priority_map[priority]); \
-    g_source_set_callback(ev->src, glib_callback, ev, NULL); \
-    ev->tag = g_source_attach(ev->src, ((struct glibLoop*) lp)->context); \
-    if (ev->tag == 0) \
-        goto error; \
-    return &ev->ev; \
-    error: \
-        verto_ctx_del(ev); \
-        return NULL
-
-#define ctx_add_io(flag) \
-    ctx_add( \
-        ev->chan = g_io_channel_unix_new(fd); \
-        if (!ev->chan) \
-            goto error; \
-        g_io_channel_set_close_on_unref(ev->chan, FALSE); \
-        ev->src = g_io_create_watch(ev->chan, flag) \
-    )
-
-static struct vertoEv *
-glib_ctx_add_read(void *lp, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data, int fd)
+static int
+glib_ctx_add(void *ctx, struct vertoEv *ev)
 {
-    ctx_add_io(G_IO_IN);
-}
+    struct glibEv *gev = g_new0(struct glibEv, 1);
+    if (!ev)
+        return ENOMEM;
 
-static struct vertoEv *
-glib_ctx_add_write(void *lp, enum vertoEvPriority priority,
-                   vertoCallback callback, void *data, int fd)
-{
-    ctx_add_io(G_IO_OUT);
-}
+    switch (verto_get_type(ev)) {
+        case VERTO_EV_TYPE_READ:
+        case VERTO_EV_TYPE_WRITE:
+            gev->chan = g_io_channel_unix_new(verto_get_fd(ev));
+            if (!gev->chan)
+                goto error;
+            g_io_channel_set_close_on_unref(gev->chan, FALSE);
 
-static struct vertoEv *
-glib_ctx_add_timeout(void *lp, enum vertoEvPriority priority,
-                     vertoCallback callback, void *data, time_t interval)
-{
-    ctx_add(ev->src = g_timeout_source_new(interval));
-}
+            gev->src = g_io_create_watch(gev->chan,
+                    verto_get_type(ev) == VERTO_EV_TYPE_READ
+                        ? G_IO_IN
+                        : G_IO_OUT);
+            break;
+        case VERTO_EV_TYPE_TIMEOUT:
+            gev->src = g_timeout_source_new(verto_get_interval(ev));
+            break;
+        case VERTO_EV_TYPE_IDLE:
+            gev->src = g_idle_source_new();
+            break;
+        case VERTO_EV_TYPE_CHILD:
+            gev->src = g_child_watch_source_new(verto_get_pid(ev));
+            break;
+        case VERTO_EV_TYPE_SIGNAL:
+#if GLIB_MAJOR_VERSION >= 2
+#if GLIB_MINOR_VERSION >= 29
+            gev->src = g_unix_signal_source_new(verto_get_signal(ev));
+            break;
+#endif /* GLIB_MINOR_VERSION >= 29 */
+#endif /* GLIB_MAJOR_VERSION >= 2 */
+        default:
+            return -1; /* Not supported */
+    }
 
-static struct vertoEv *
-glib_ctx_add_idle(void *lp, enum vertoEvPriority priority,
-                  vertoCallback callback, void *data)
-{
-    ctx_add(ev->src = g_idle_source_new());
-}
 
-static struct vertoEv *
-glib_ctx_add_signal(void *lp, enum vertoEvPriority priority,
-                    vertoCallback callback, void *data, int signal)
-{
-    ctx_add(ev->src = g_unix_signal_source_new(signal));
-}
+    if (!gev->src)
+        goto error;
 
-static struct vertoEv *
-glib_ctx_add_child(void *lp, enum vertoEvPriority priority,
-                                    vertoCallback callback, void *data,
-                                    pid_t pid)
-{
-    ctx_add(ev->src = g_child_watch_source_new(pid));
+    g_source_set_can_recurse(gev->src, FALSE);
+    g_source_set_priority(gev->src, priority_map[verto_get_priority(ev)]);
+    g_source_set_callback(gev->src, glib_callback, ev, NULL);
+    gev->tag = g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context);
+    if (gev->tag == 0)
+        goto error;
+
+    return 0;
+    error:
+        if (gev) {
+            if (gev->chan)
+                g_io_channel_unref(gev->chan);
+            g_free(gev);
+        }
+        return ENOMEM;
 }
 
 static void
@@ -205,4 +195,3 @@ verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
     return verto_convert_funcs(&glib_funcs, glib_convert_(mc, ml));
 }
-

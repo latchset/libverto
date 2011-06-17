@@ -39,12 +39,7 @@
         name ## _ctx_run, \
         name ## _ctx_run_once, \
         name ## _ctx_break, \
-        name ## _ctx_add_read, \
-        name ## _ctx_add_write, \
-        name ## _ctx_add_timeout, \
-        name ## _ctx_add_idle, \
-        name ## _ctx_add_signal, \
-        name ## _ctx_add_child, \
+        name ## _ctx_add, \
         name ## _ctx_del \
     }; \
     struct vertoEvCtx *verto_new_ ## name() { \
@@ -61,7 +56,7 @@
                     verto_default_ ## name, \
     };
 
-typedef struct vertoEvCtx *(*vertoEvCtxConstructor)(void);
+typedef struct vertoEvCtx *(*vertoEvCtxConstructor)();
 
 struct vertoModule {
     unsigned int vers;
@@ -74,28 +69,12 @@ struct vertoModule {
 struct vertoEvCtxFuncs {
     void *(*ctx_new)();
     void *(*ctx_default)();
-    void (*ctx_free)(void *lp);
-    void (*ctx_run)(void *lp);
-    void (*ctx_run_once)(void *lp);
-    void (*ctx_break)(void *lp);
-    struct vertoEv *(*ctx_add_read)(void *lp, enum vertoEvPriority priority,
-                                       vertoCallback callback, void *data,
-                                       int fd);
-    struct vertoEv *(*ctx_add_write)(void *lp, enum vertoEvPriority priority,
-                                        vertoCallback callback, void *data,
-                                        int fd);
-    struct vertoEv *(*ctx_add_timeout)(void *lp, enum vertoEvPriority priority,
-                                          vertoCallback callback, void *data,
-                                          time_t interval);
-    struct vertoEv *(*ctx_add_idle)(void *lp, enum vertoEvPriority priority,
-                                       vertoCallback callback, void *data);
-    struct vertoEv *(*ctx_add_signal)(void *lp, enum vertoEvPriority priority,
-                                         vertoCallback callback, void *data,
-                                         int signal);
-    struct vertoEv *(*ctx_add_child)(void *lp, enum vertoEvPriority priority,
-                                        vertoCallback callback, void *data,
-                                        pid_t pid);
-    void (*ctx_del)(void *lp, struct vertoEv *ev);
+    void  (*ctx_free)(void *ctx);
+    void  (*ctx_run)(void *ctx);
+    void  (*ctx_run_once)(void *ctx);
+    void  (*ctx_break)(void *ctx);
+    int   (*ctx_add)(void *ctx, struct vertoEv *ev);
+    void  (*ctx_del)(void *ctx, struct vertoEv *ev);
 };
 
 /**
@@ -134,5 +113,29 @@ verto_default_funcs(const struct vertoEvCtxFuncs *funcs);
  */
 struct vertoEvCtx *
 verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private);
+
+/**
+ * Gets the module private stored in this vertoEv.
+ *
+ * This function is only used for module writers to store a context in the
+ * vertoEv for later use.
+ *
+ * @see verto_set_module_private()
+ * @return The module private.
+ */
+void *
+verto_get_module_private(const struct vertoEv *ev);
+
+/**
+ * Sets the module private stored in this vertoEv.
+ *
+ * This function is only used for module writers to store a context in the
+ * vertoEv for later use.
+ *
+ * @see verto_get_module_private()
+ * @return The previous module private.
+ */
+void *
+verto_set_module_private(struct vertoEv *ev, void *priv);
 
 #endif /* VERTO_MODULE_H_ */
