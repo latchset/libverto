@@ -45,7 +45,7 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
     if (++occurrences > 1)
         exit_cb(ctx, ev);
 
-    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 1000);
+    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
 }
 
 int
