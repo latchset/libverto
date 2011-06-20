@@ -22,10 +22,14 @@
  * SOFTWARE.
  */
 
+#include <sys/time.h>
+
 #include "test.h"
 
-static time_t starttime;
-static time_t endtime;
+#define M2U(m) ((m) * 1000)
+
+static struct timeval starttime;
+static struct timeval endtime;
 
 void
 exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
@@ -36,12 +40,18 @@ exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 void
 cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    if (endtime == 0) {
-        endtime = time(NULL);
-        retval = endtime - starttime < 1 || endtime - starttime > 2;
+    long long diff;
+
+    if (starttime.tv_sec == endtime.tv_sec && starttime.tv_usec == endtime.tv_usec) {
+        gettimeofday(&endtime, NULL);
+
+        diff = (endtime.tv_sec - starttime.tv_sec) * M2U(1000)
+                + endtime.tv_usec - starttime.tv_usec;
+
+        retval = diff < M2U(50) || diff > M2U(100);
         if (retval != 0)
             printf("ERROR: Timeout is out-of-bounds!\n");
-        verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 1100);
+        verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
         return;
     }
 
@@ -53,9 +63,9 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 int
 do_test(struct vertoEvCtx *ctx)
 {
-    starttime = time(NULL);
-    endtime = 0;
+    gettimeofday(&starttime, NULL);
+    endtime = starttime;
 
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, 1000));
+    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, 50));
     return 0;
 }
