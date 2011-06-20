@@ -69,6 +69,9 @@ libev_ctx_break(void *ctx)
 static void
 libev_callback(EV_P_ ev_watcher *w, int revents)
 {
+    if (verto_get_type(w->data) == VERTO_EV_TYPE_CHILD)
+        verto_set_pid_status(w->data, ((ev_child*) w)->rstatus);
+
     verto_call(w->data);
 
     switch (verto_get_type(w->data)) {
