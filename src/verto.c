@@ -154,7 +154,8 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
 
     if (impl) {
         /* Try to do a load by the path */
-        success = do_load_file(impl, false, dll, module);
+        if (strchr(impl, '/'))
+            success = do_load_file(impl, false, dll, module);
         if (!success) {
             /* Try to do a load by the name */
             tmp = NULL;
