@@ -29,8 +29,8 @@
 #include <verto-tevent.h>
 #include <verto-module.h>
 
-#define tctx(priv) ((struct teventEvCtx *) priv)->ctx
-#define texit(priv) ((struct teventEvCtx *) priv)->exit
+#define tctx(p) ((struct teventEvCtx *) p)->ctx
+#define texit(p) ((struct teventEvCtx *) p)->exit
 
 static struct teventEvCtx *defctx;
 
@@ -72,7 +72,7 @@ static void
 tevent_ctx_run(void *priv)
 {
     while (!texit(priv))
-        tevent_loop_once(priv);
+        tevent_loop_once(tctx(priv));
     texit(priv) = false;
 }
 
@@ -102,33 +102,34 @@ definecb(signal, int signum, int count, void *siginfo)
 static int
 tevent_ctx_add(void *ctx, struct vertoEv *ev)
 {
-    struct timeval tv;
     void *priv = NULL;
+    time_t interval;
+    struct timeval tv;
+
+    interval = verto_get_interval(ev);
+    tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
 
     switch (verto_get_type(ev)) {
-        case VERTO_EV_TYPE_READ:
-            priv = tevent_add_fd(tctx(priv), tctx(priv), verto_get_fd(ev),
-                                 TEVENT_FD_READ, tevent_fd_cb, ev);
-            break;
-        case VERTO_EV_TYPE_WRITE:
-            priv = tevent_add_fd(tctx(priv), tctx(priv), verto_get_fd(ev),
-                                 TEVENT_FD_WRITE, tevent_fd_cb, ev);
-            break;
-        case VERTO_EV_TYPE_TIMEOUT:
-            tv.tv_sec = verto_get_interval(ev) / 1000;
-            tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
-            priv = tevent_add_timer(tctx(priv), tctx(priv), tv,
-                                    tevent_timer_cb, ev);
-            break;
-        case VERTO_EV_TYPE_SIGNAL:
-            priv = tevent_add_signal(tctx(priv), tctx(priv),
-                                     verto_get_signal(ev), 0,
-                                     tevent_signal_cb, ev);
-            break;
-        case VERTO_EV_TYPE_IDLE:
-        case VERTO_EV_TYPE_CHILD:
-        default:
-            return -1; /* Not supported */
+    case VERTO_EV_TYPE_READ:
+        priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
+                             TEVENT_FD_READ, tevent_fd_cb, ev);
+        break;
+    case VERTO_EV_TYPE_WRITE:
+        priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
+                             TEVENT_FD_WRITE, tevent_fd_cb, ev);
+        break;
+    case VERTO_EV_TYPE_TIMEOUT:
+        priv = tevent_add_timer(tctx(ctx), tctx(ctx), tv,
+                                tevent_timer_cb, ev);
+        break;
+    case VERTO_EV_TYPE_SIGNAL:
+        priv = tevent_add_signal(tctx(ctx), tctx(ctx), verto_get_signal(ev),
+                                 0, tevent_signal_cb, ev);
+        break;
+    case VERTO_EV_TYPE_IDLE:
+    case VERTO_EV_TYPE_CHILD:
+    default:
+        return -1; /* Not supported */
     }
 
     if (!priv)
