@@ -59,6 +59,9 @@ glib_convert_(GMainContext *mc, GMainLoop *ml)
             l->context = g_main_context_ref(g_main_context_default());
             l->loop = g_main_loop_new(l->context, FALSE);
         }
+    } else {
+        g_main_loop_unref(ml);
+        g_main_context_unref(mc);
     }
 
     return l;
@@ -68,9 +71,7 @@ static void *
 glib_ctx_new()
 {
     GMainContext *mc = g_main_context_new();
-    void *lp = glib_convert_(mc, NULL);
-    g_main_context_unref(mc);
-    return lp;
+    return glib_convert_(mc, NULL);
 }
 
 static void *
@@ -109,13 +110,15 @@ static gboolean
 glib_callback(gpointer data)
 {
     verto_call(data);
-    return TRUE;
+    return FALSE;
 }
 
 static int
 glib_ctx_add(void *ctx, struct vertoEv *ev)
 {
-    struct glibEv *gev = g_new0(struct glibEv, 1);
+    struct glibEv *gev = NULL;
+
+    gev = g_new0(struct glibEv, 1);
     if (!ev)
         return ENOMEM;
 
