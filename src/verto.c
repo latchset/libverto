@@ -66,23 +66,21 @@ static inline bool
 do_load_file(const char *filename, bool reqsym, void **dll,
              struct vertoModule **module)
 {
-    struct vertoModule *mod = *module;
-
     *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
     if (!dll) {
-        /* printf("%s -- %s\n", filename.c_str(), dlerror()); */
+        /* printf("%s -- %s\n", filename, dlerror()); */
         return false;
     }
 
-    mod = (struct vertoModule*) dlsym(dll, __str(_VERTO_MODULE_TABLE));
-    if (!mod || mod->vers != _VERTO_MODULE_VERSION || !mod->new_ctx
-            || !mod->def_ctx)
+    *module = (struct vertoModule*) dlsym(*dll, __str(_VERTO_MODULE_TABLE));
+    if (!*module || (*module)->vers != _VERTO_MODULE_VERSION
+            || !(*module)->new_ctx || !(*module)->def_ctx)
         goto error;
 
     /* Check to make sure that we have our required symbol if reqsym == true */
-    if (mod->symb && reqsym) {
+    if ((*module)->symb && reqsym) {
         void *tmp = dlopen(NULL, 0);
-        if (!tmp || !dlsym(tmp, mod->symb)) {
+        if (!tmp || !dlsym(tmp, (*module)->symb)) {
             if (tmp)
                 dlclose(tmp);
             goto error;
