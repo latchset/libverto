@@ -28,7 +28,11 @@
 #include <verto-module.h>
 
 /* DEFAULT, LOW, MEDIUM, HIGH */
-static gint priority_map[4] = {50, 100, 50, 0};
+static gint priority_map[4] = {
+        G_PRIORITY_DEFAULT,
+        G_PRIORITY_LOW,
+        G_PRIORITY_DEFAULT_IDLE,
+        G_PRIORITY_HIGH };
 
 struct glibEvCtx {
     GMainContext *context;
