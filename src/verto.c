@@ -47,6 +47,11 @@ struct vertoEvCtx {
     struct vertoEvCtxFuncs funcs;
 };
 
+struct vertoChild {
+    pid_t pid;
+    int   status;
+};
+
 struct vertoEv {
     struct vertoEvCtx *ctx;
     enum vertoEvType type;
@@ -58,7 +63,7 @@ struct vertoEv {
         int fd;
         int signal;
         time_t interval;
-        pid_t pid;
+        struct vertoChild child;
     } option;
 };
 
@@ -356,7 +361,7 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 {
     if (pid < 1)
         return NULL;
-    doadd(ev->option.pid = pid, VERTO_EV_TYPE_CHILD);
+    doadd(ev->option.child.pid = pid, VERTO_EV_TYPE_CHILD);
 }
 
 void
@@ -410,8 +415,14 @@ verto_get_signal(const struct vertoEv *ev)
 pid_t
 verto_get_pid(const struct vertoEv *ev) {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
-        return ev->option.pid;
+        return ev->option.child.pid;
     return 0;
+}
+
+int
+verto_get_pid_status(const struct vertoEv *ev)
+{
+    return ev->option.child.status;
 }
 
 void
@@ -479,6 +490,13 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
     ctx->modpriv = ctx_private;
     ctx->funcs = *funcs;
     return ctx;
+}
+
+void
+verto_set_pid_status(struct vertoEv *ev, int status)
+{
+    if (ev && ev->type == VERTO_EV_TYPE_CHILD)
+        ev->option.child.status = status;
 }
 
 void *

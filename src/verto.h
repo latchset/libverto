@@ -378,6 +378,16 @@ pid_t
 verto_get_pid(const struct vertoEv *ev);
 
 /**
+ * Gets the status of the pid which caused this event to fire.
+ *
+ * @see verto_add_child()
+ * @param ev The vertoEv to retrieve the status from.
+ * @return The pid status.
+ */
+int
+verto_get_pid_status(const struct vertoEv *ev);
+
+/**
  * Removes an event from from the event context and frees it.
  *
  * The event and its contents cannot be used after this call.

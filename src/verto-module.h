@@ -115,6 +115,18 @@ struct vertoEvCtx *
 verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private);
 
 /**
+ * Sets the status of the pid which caused this event to fire.
+ *
+ * This function does nothing if the vertoEv is not a child type.
+ *
+ * @see verto_add_child()
+ * @param ev The vertoEv to set the status in.
+ * @param status The pid status.
+ */
+void
+verto_set_pid_status(struct vertoEv *ev, int status);
+
+/**
  * Gets the module private stored in this vertoEv.
  *
  * This function is only used for module writers to store a context in the
