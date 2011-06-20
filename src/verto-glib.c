@@ -117,13 +117,20 @@ glib_callback(gpointer data)
     return FALSE;
 }
 
+static void
+glib_callback_child(GPid pid, gint status, gpointer data)
+{
+    verto_set_pid_status(data, status);
+    verto_call(data);
+}
+
 static int
 glib_ctx_add(void *ctx, struct vertoEv *ev)
 {
     struct glibEv *gev = NULL;
 
     gev = g_new0(struct glibEv, 1);
-    if (!ev)
+    if (!gev)
         return ENOMEM;
 
     switch (verto_get_type(ev)) {
@@ -165,11 +172,14 @@ glib_ctx_add(void *ctx, struct vertoEv *ev)
 
     g_source_set_can_recurse(gev->src, FALSE);
     g_source_set_priority(gev->src, priority_map[verto_get_priority(ev)]);
-    g_source_set_callback(gev->src, glib_callback, ev, NULL);
+    g_source_set_callback(gev->src, verto_get_type(ev) == VERTO_EV_TYPE_CHILD
+                                    ? (GSourceFunc) glib_callback_child
+                                    : glib_callback, ev, NULL);
     gev->tag = g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context);
     if (gev->tag == 0)
         goto error;
 
+    verto_set_module_private(ev, gev);
     return 0;
     error:
         if (gev) {
@@ -186,12 +196,16 @@ glib_ctx_del(void *lp, struct vertoEv *ev)
     if (!ev)
         return;
 
-    if (((struct glibEv*) ev)->tag > 0)
-        g_source_remove(((struct glibEv*) ev)->tag);
-    if (((struct glibEv*) ev)->src)
-        g_source_unref(((struct glibEv*) ev)->src);
-    if (((struct glibEv*) ev)->chan)
-        g_io_channel_unref(((struct glibEv*) ev)->chan);
+    struct glibEv *gev = verto_get_module_private(ev);
+    if (gev) {
+        if (gev->tag > 0)
+            g_source_remove(gev->tag);
+        if (gev->src)
+            g_source_unref(gev->src);
+        if (gev->chan)
+            g_io_channel_unref(gev->chan);
+    }
+
     g_free(ev);
 }
 
