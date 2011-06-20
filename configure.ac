@@ -88,10 +88,10 @@ echo -e "LIBRARIES TO BE BUILT"
 echo -e "\tlibverto\t\tyes"
 echo -e "\tlibverto-glib\t\t$with_glib"
 echo -e "\tlibverto-libev\t\t$with_libev"
-echo -e "\tlibverto-event\t\t$with_event"
+echo -e "\tlibverto-libevent\t$with_libevent"
 echo -e "\tlibverto-tevent\t\t$with_tevent"
 echo -e ""
 
-AC_CONFIG_FILES(Makefile src/Makefile)
+AC_CONFIG_FILES(Makefile src/Makefile tests/Makefile)
 AC_OUTPUT
 
