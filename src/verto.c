@@ -242,9 +242,9 @@ verto_free(struct vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
+    ctx->funcs.ctx_free(ctx->modpriv);
     if (ctx->dll)
         dlclose(ctx->dll);
-    ctx->funcs.ctx_free(ctx->modpriv);
     free(ctx);
 }
 
