@@ -22,62 +22,55 @@
  * SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-#include <verto.h>
+#include <verto-module.h>
+#include "test.h"
 
-static const char *MODULES[] = {
-#ifdef HAVE_GLIB
-    "glib",
-#endif
-#ifdef HAVE_LIBEV
-    "libev",
-#endif
-#ifdef HAVE_LIBEVENT
-    "libevent",
-#endif
-#ifdef HAVE_TEVENT
-    "tevent",
-#endif
-    NULL
-};
+#define EXITCODE 17
 
-int do_test(struct vertoEvCtx *ctx);
+static int exitstatus;
 
-static int retval = 0;
-
-int
-main(int argc, char **argv)
+void
+exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    int i, j;
-    struct vertoEvCtx *ctx;
-
-    for (i=0 ; MODULES[i] ; i++) {
-        printf("Module: %s\n", MODULES[i]);
-
-        ctx = verto_default(MODULES[i]);
-        if (!ctx)
-            return 1;
-
-        retval = do_test(ctx);
-        if (retval != 0) {
-            verto_free(ctx);
-            return retval;
-        }
-
-        verto_run(ctx);
-        verto_free(ctx);
-
-        /* Reset all signal handlers (clean startup for the next ctx). */
-        for (j=0 ; j < 32 ; j++)
-            signal(j, SIG_DFL);
-
-        if (retval != 0)
-            break;
+    if (WEXITSTATUS(exitstatus) != EXITCODE) {
+        printf("ERROR: Child event never fired!\n");
+        retval = 1;
     }
 
-    return retval;
+    verto_break(ctx);
+}
+
+void
+cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+{
+    exitstatus = verto_get_pid_status(ev);
+}
+
+int
+do_test(struct vertoEvCtx *ctx)
+{
+    pid_t pid;
+
+    exitstatus = 0;
+
+    pid = fork();
+    if (pid < 0)
+        return 1;
+    else if (pid == 0) {
+        usleep(50000); /* 0.05 seconds */
+        exit(EXITCODE);
+    }
+
+    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
+
+    if (!verto_add_child(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, pid)) {
+        printf("WARNING: Child not supported!\n");
+        usleep(100000);
+        waitpid(pid, &exitstatus, 0);
+    }
+
+    return 0;
 }

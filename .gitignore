@@ -24,3 +24,7 @@ missing
 
 tests/idle
 tests/timeout
+tests/child
+tests/signal
+tests/read
+tests/write
