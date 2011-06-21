@@ -25,7 +25,6 @@
 #ifndef VERTO_H_
 #define VERTO_H_
 
-#include <stdint.h> /* For uintptr_t */
 #include <time.h>   /* For time_t */
 #include <unistd.h> /* For pid_t */
 
