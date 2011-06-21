@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include <libgen.h>
 #include <sys/types.h>
@@ -245,11 +246,41 @@ verto_default(const char *impl)
 void
 verto_free(struct vertoEvCtx *ctx)
 {
+    int i;
+    sigset_t old;
+    sigset_t block;
+    struct sigaction act;
+    Dl_info info;
+
     if (!ctx)
         return;
     ctx->funcs.ctx_free(ctx->modpriv);
-    if (ctx->dll)
+    if (ctx->dll) {
+        /* If dlclose() unmaps memory that is registered as a signal handler
+         * we have to remove that handler otherwise if that signal is fired
+         * we jump into unmapped memory. So we loop through and test each
+         * handler to see if it is in unmapped memory.  If it is, we set it
+         * back to the default handler. Lastly, if a signal were to fire it
+         * could be a race condition. So we mask out all signals during this
+         * process.
+         */
+        sigfillset(&block);
+        sigprocmask(SIG_SETMASK, &block, &old);
         dlclose(ctx->dll);
+        for (i=0 ; i < _NSIG ; i++) {
+            if (sigaction(i, NULL, &act) == 0) {
+                if (act.sa_flags & SA_SIGINFO) {
+                    if (dladdr(act.sa_sigaction, &info) == 0)
+                        signal(i, SIG_DFL);
+                } else if (act.sa_handler != SIG_DFL
+                        && act.sa_handler != SIG_IGN
+                        && dladdr(act.sa_handler, &info) == 0) {
+                    signal(i, SIG_DFL);
+                }
+            }
+        }
+        sigprocmask(SIG_SETMASK, &old, NULL);
+    }
     free(ctx);
 }
 

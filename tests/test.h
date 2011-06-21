@@ -52,7 +52,7 @@ static int retval = 0;
 int
 main(int argc, char **argv)
 {
-    int i, j;
+    int i;
     struct vertoEvCtx *ctx;
 
     for (i=0 ; MODULES[i] ; i++) {
@@ -70,10 +70,6 @@ main(int argc, char **argv)
 
         verto_run(ctx);
         verto_free(ctx);
-
-        /* Reset all signal handlers (clean startup for the next ctx). */
-        for (j=0 ; j < 32 ; j++)
-            signal(j, SIG_DFL);
 
         if (retval != 0)
             break;
