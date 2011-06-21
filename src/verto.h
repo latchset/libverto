@@ -276,6 +276,23 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                 vertoCallback callback, void *priv, pid_t pid);
 
 /**
+ * Duplicates the current event so that it will be fired again.
+ *
+ * Always returns NULL for signal events since they are persistent.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_child()
+ * @see verto_del()
+ * @param ev The vertoEv to add.
+ * @return The new vertoEv registered with the event context.
+ */
+struct vertoEv *
+verto_repeat(const struct vertoEv *ev);
+
+/**
  * Calls the callback of the vertoEv.
  *
  * @see verto_add_read()

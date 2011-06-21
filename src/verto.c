@@ -396,6 +396,32 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
     doadd(ev->option.child.pid = pid, VERTO_EV_TYPE_CHILD);
 }
 
+struct vertoEv *
+verto_repeat(const struct vertoEv *ev)
+{
+    switch (ev->type) {
+    case VERTO_EV_TYPE_READ:
+        return verto_add_read(ev->ctx, ev->priority, ev->callback, ev->priv,
+                              ev->option.fd);
+    case VERTO_EV_TYPE_WRITE:
+        return verto_add_write(ev->ctx, ev->priority, ev->callback, ev->priv,
+                               ev->option.fd);
+    case VERTO_EV_TYPE_TIMEOUT:
+        return verto_add_timeout(ev->ctx, ev->priority, ev->callback, ev->priv,
+                                 ev->option.interval);
+    case VERTO_EV_TYPE_IDLE:
+        return verto_add_idle(ev->ctx, ev->priority, ev->callback, ev->priv);
+    case VERTO_EV_TYPE_CHILD:
+        return verto_add_child(ev->ctx, ev->priority, ev->callback, ev->priv,
+                               ev->option.child.pid);
+    case VERTO_EV_TYPE_SIGNAL:
+    default:
+        break; /* Not supported */
+    }
+
+    return NULL;
+}
+
 void
 verto_call(struct vertoEv *ev)
 {
