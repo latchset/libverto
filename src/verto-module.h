@@ -33,8 +33,6 @@
 #define _VERTO_MODULE_TABLE verto_module_table
 #define VERTO_MODULE(name, symb) \
     static struct vertoEvCtxFuncs name ## _funcs = { \
-        name ## _ctx_new, \
-        name ## _ctx_default, \
         name ## _ctx_free, \
         name ## _ctx_run, \
         name ## _ctx_run_once, \
@@ -42,12 +40,6 @@
         name ## _ctx_add, \
         name ## _ctx_del \
     }; \
-    struct vertoEvCtx *verto_new_ ## name() { \
-        return verto_new_funcs(&name ## _funcs); \
-    } \
-    struct vertoEvCtx *verto_default_ ## name() { \
-        return verto_default_funcs(&name ## _funcs); \
-    } \
     struct vertoModule _VERTO_MODULE_TABLE = { \
                     _VERTO_MODULE_VERSION, \
                     # name, \
@@ -67,8 +59,6 @@ struct vertoModule {
 };
 
 struct vertoEvCtxFuncs {
-    void *(*ctx_new)();
-    void *(*ctx_default)();
     void  (*ctx_free)(void *ctx);
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
@@ -76,30 +66,6 @@ struct vertoEvCtxFuncs {
     void *(*ctx_add)(void *ctx, const struct vertoEv *ev);
     void  (*ctx_del)(void *ctx, const struct vertoEv *ev, void *evpriv);
 };
-
-/**
- * Creates a new event loop from a vertoEvCtxFuncs.
- *
- * You don't want this function unless you are writing an implementation
- * module or are integrating a home-baked event loop into verto.
- *
- * @param funcs The vertoEvCtxFuncs vtable.
- * @return A new EvCtx, or NULL on error.  Call verto_free() when done.
- */
-struct vertoEvCtx *
-verto_new_funcs(const struct vertoEvCtxFuncs *funcs);
-
-/**
- * Gets the default event loop from a vertoEvCtxFuncs.
- *
- * You don't want this function unless you are writing an implementation
- * module or are integrating a home-baked event loop into verto.
- *
- * @param funcs The vertoEvCtxFuncs vtable.
- * @return The default EvCtx, or NULL on error.  Call verto_free() when done.
- */
-struct vertoEvCtx *
-verto_default_funcs(const struct vertoEvCtxFuncs *funcs);
 
 /**
  * Converts an existing implementation specific loop to a verto loop.

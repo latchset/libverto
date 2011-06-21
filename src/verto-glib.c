@@ -71,19 +71,6 @@ glib_convert_(GMainContext *mc, GMainLoop *ml)
     return l;
 }
 
-static void *
-glib_ctx_new()
-{
-    GMainContext *mc = g_main_context_new();
-    return glib_convert_(mc, NULL);
-}
-
-static void *
-glib_ctx_default()
-{
-    return glib_convert_(g_main_context_default(), NULL);
-}
-
 static void
 glib_ctx_free(void *lp)
 {
@@ -212,7 +199,19 @@ glib_ctx_del(void *lp, const struct vertoEv *ev, void *evpriv)
 VERTO_MODULE(glib, g_main_context_default);
 
 struct vertoEvCtx *
+verto_new_glib() {
+    return verto_convert_glib(g_main_context_new(), NULL);
+}
+
+struct vertoEvCtx *
+verto_default_glib() {
+    return verto_convert_glib(g_main_context_default(), NULL);
+}
+
+struct vertoEvCtx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
     return verto_convert_funcs(&glib_funcs, glib_convert_(mc, ml));
 }
+
+

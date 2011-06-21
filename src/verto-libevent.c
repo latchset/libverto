@@ -31,20 +31,6 @@
 
 static struct event_base *defctx;
 
-static void *
-libevent_ctx_new()
-{
-    return event_base_new();
-}
-
-static void *
-libevent_ctx_default()
-{
-    if (!defctx)
-        defctx = event_base_new();
-    return defctx;
-}
-
 static void
 libevent_ctx_free(void *priv)
 {
@@ -122,7 +108,22 @@ libevent_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 
 VERTO_MODULE(libevent, event_base_init);
 
-struct vertoEvCtx *verto_convert_libevent(struct event_base* base)
+struct vertoEvCtx *
+verto_new_libevent()
+{
+    return verto_convert_libevent(event_base_new());
+}
+
+struct vertoEvCtx *
+verto_default_libevent()
+{
+    if (!defctx)
+        defctx = event_base_new();
+    return verto_convert_libevent(defctx);
+}
+
+struct vertoEvCtx *
+verto_convert_libevent(struct event_base* base)
 {
     return verto_convert_funcs(&libevent_funcs, base);
 }

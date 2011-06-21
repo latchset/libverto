@@ -30,6 +30,6 @@
 
 struct vertoEvCtx *verto_new_tevent();
 struct vertoEvCtx *verto_default_tevent();
-struct vertoEvCtx *verto_convert_tevent(struct tevent_context *ctx);
+struct vertoEvCtx *verto_convert_tevent(struct tevent_context *context);
 
 #endif /* VERTO_TEVENT_H_ */

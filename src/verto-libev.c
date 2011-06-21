@@ -29,18 +29,6 @@
 #include <verto-libev.h>
 #include <verto-module.h>
 
-static void *
-libev_ctx_new()
-{
-    return ev_loop_new(EVFLAG_AUTO);
-}
-
-static void *
-libev_ctx_default()
-{
-    return ev_default_loop(EVFLAG_AUTO);
-}
-
 static void
 libev_ctx_free(void *ctx)
 {
@@ -154,7 +142,20 @@ libev_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 
 VERTO_MODULE(libev, ev_loop_new);
 
-struct vertoEvCtx *verto_convert_libev(struct ev_loop* loop)
+struct vertoEvCtx *
+verto_new_libev()
+{
+    return verto_convert_libev(ev_loop_new(EVFLAG_AUTO));
+}
+
+struct vertoEvCtx *
+verto_default_libev()
+{
+    return verto_convert_libev(ev_default_loop(EVFLAG_AUTO));
+}
+
+struct vertoEvCtx *
+verto_convert_libev(struct ev_loop* loop)
 {
     return verto_convert_funcs(&libev_funcs, loop);
 }

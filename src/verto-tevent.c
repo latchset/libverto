@@ -32,34 +32,12 @@
 #define tctx(p) ((struct teventEvCtx *) p)->ctx
 #define texit(p) ((struct teventEvCtx *) p)->exit
 
-static struct teventEvCtx *defctx;
+static struct tevent_context *defctx;
 
 struct teventEvCtx {
     struct tevent_context *ctx;
     bool exit;
 };
-
-static void *
-tevent_ctx_new()
-{
-    struct teventEvCtx *ctx;
-
-    ctx = talloc_zero(NULL, struct teventEvCtx);
-    if (ctx) {
-        talloc_set_name_const(ctx, "libverto");
-        ctx->ctx = tevent_context_init(ctx);
-        ctx->exit = false;
-    }
-    return ctx;
-}
-
-static void *
-tevent_ctx_default()
-{
-    if (!defctx)
-        defctx = tevent_ctx_new();
-    return defctx;
-}
 
 static void
 tevent_ctx_free(void *priv)
@@ -147,7 +125,31 @@ tevent_ctx_del(void *priv, const struct vertoEv *ev, void *evpriv)
 VERTO_MODULE(tevent, g_main_context_default);
 
 struct vertoEvCtx *
-verto_convert_tevent(struct tevent_context *ctx)
+verto_new_tevent()
 {
+    return verto_convert_tevent(tevent_context_init(NULL));
+}
+
+struct vertoEvCtx *
+verto_default_tevent()
+{
+    if (!defctx)
+        defctx = tevent_context_init(NULL);
+    return verto_convert_tevent(defctx);
+}
+
+struct vertoEvCtx *
+verto_convert_tevent(struct tevent_context *context)
+{
+    struct teventEvCtx *ctx;
+
+    ctx = talloc_zero(NULL, struct teventEvCtx);
+    if (ctx) {
+        talloc_set_name_const(ctx, "libverto");
+        ctx->ctx = context;
+        ctx->exit = false;
+        if (ctx->ctx != defctx)
+            talloc_steal(ctx, ctx->ctx);
+    }
     return verto_convert_funcs(&tevent_funcs, ctx);
 }

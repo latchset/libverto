@@ -494,46 +494,6 @@ verto_del(struct vertoEv *ev)
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
 struct vertoEvCtx *
-verto_new_funcs(const struct vertoEvCtxFuncs *funcs)
-{
-    void *priv = NULL;
-    struct vertoEvCtx *ctx = NULL;
-
-    if (!funcs)
-        return NULL;
-
-    priv = funcs->ctx_new();
-    if (!priv)
-        return NULL;
-
-    ctx = verto_convert_funcs(funcs, priv);
-    if (!ctx)
-        funcs->ctx_free(priv);
-
-    return ctx;
-}
-
-struct vertoEvCtx *
-verto_default_funcs(const struct vertoEvCtxFuncs *funcs)
-{
-    void *priv = NULL;
-    struct vertoEvCtx *ctx = NULL;
-
-    if (!funcs)
-        return NULL;
-
-    priv = funcs->ctx_default();
-    if (!priv)
-        return NULL;
-
-    ctx = verto_convert_funcs(funcs, priv);
-    if (!ctx)
-        funcs->ctx_free(priv);
-
-    return ctx;
-}
-
-struct vertoEvCtx *
 verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
 {
     struct vertoEvCtx *ctx = NULL;
