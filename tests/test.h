@@ -29,7 +29,7 @@
 
 #include <verto.h>
 
-static const char *MODULES[] = {
+static char *MODULES[] = {
 #ifdef HAVE_GLIB
     "glib",
 #endif
@@ -54,6 +54,11 @@ main(int argc, char **argv)
 {
     int i;
     struct vertoEvCtx *ctx;
+
+    if (argc == 2) {
+        MODULES[0] = argv[1];
+        MODULES[1] = NULL;
+    }
 
     for (i=0 ; MODULES[i] ; i++) {
         printf("Module: %s\n", MODULES[i]);
