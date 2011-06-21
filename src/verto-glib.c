@@ -114,6 +114,9 @@ static gboolean
 glib_callback(gpointer data)
 {
     verto_call(data);
+
+    if (verto_get_type(data) == VERTO_EV_TYPE_SIGNAL)
+        return TRUE;
     return FALSE;
 }
 
