@@ -73,8 +73,8 @@ struct vertoEvCtxFuncs {
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    void *(*ctx_add)(void *ctx, struct vertoEv *ev);
-    void  (*ctx_del)(void *ctx, struct vertoEv *ev, void *evpriv);
+    void *(*ctx_add)(void *ctx, const struct vertoEv *ev);
+    void  (*ctx_del)(void *ctx, const struct vertoEv *ev, void *evpriv);
 };
 
 /**

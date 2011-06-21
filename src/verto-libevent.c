@@ -77,7 +77,7 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
 }
 
 static void *
-libevent_ctx_add(void *ctx, struct vertoEv *ev)
+libevent_ctx_add(void *ctx, const struct vertoEv *ev)
 {
     struct event *priv = NULL;
     struct timeval *timeout = NULL;
@@ -85,20 +85,20 @@ libevent_ctx_add(void *ctx, struct vertoEv *ev)
 
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_READ:
-        priv = event_new(ctx, verto_get_fd(ev), EV_READ, libevent_callback, ev);
+        priv = event_new(ctx, verto_get_fd(ev), EV_READ, libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_WRITE:
-        priv = event_new(ctx, verto_get_fd(ev), EV_WRITE, libevent_callback, ev);
+        priv = event_new(ctx, verto_get_fd(ev), EV_WRITE, libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_TIMEOUT:
         timeout = &tv;
         tv.tv_sec = verto_get_interval(ev) / 1000;
         tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
-        priv = event_new(ctx, -1, EV_TIMEOUT, libevent_callback, ev);
+        priv = event_new(ctx, -1, EV_TIMEOUT, libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_SIGNAL:
         priv = event_new(ctx, verto_get_signal(ev), EV_SIGNAL | EV_PERSIST,
-                         libevent_callback, ev);
+                         libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
@@ -114,7 +114,7 @@ libevent_ctx_add(void *ctx, struct vertoEv *ev)
 }
 
 static void
-libevent_ctx_del(void *ctx, struct vertoEv *ev, void *evpriv)
+libevent_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 {
     event_del(evpriv);
     event_free(evpriv);

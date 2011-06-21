@@ -100,7 +100,7 @@ definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
 static void *
-tevent_ctx_add(void *ctx, struct vertoEv *ev)
+tevent_ctx_add(void *ctx, const struct vertoEv *ev)
 {
     void *priv = NULL;
     time_t interval;
@@ -112,19 +112,19 @@ tevent_ctx_add(void *ctx, struct vertoEv *ev)
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_READ:
         priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
-                             TEVENT_FD_READ, tevent_fd_cb, ev);
+                             TEVENT_FD_READ, tevent_fd_cb, (void *) ev);
         break;
     case VERTO_EV_TYPE_WRITE:
         priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
-                             TEVENT_FD_WRITE, tevent_fd_cb, ev);
+                             TEVENT_FD_WRITE, tevent_fd_cb, (void *) ev);
         break;
     case VERTO_EV_TYPE_TIMEOUT:
         priv = tevent_add_timer(tctx(ctx), tctx(ctx), tv,
-                                tevent_timer_cb, ev);
+                                tevent_timer_cb, (void *) ev);
         break;
     case VERTO_EV_TYPE_SIGNAL:
         priv = tevent_add_signal(tctx(ctx), tctx(ctx), verto_get_signal(ev),
-                                 0, tevent_signal_cb, ev);
+                                 0, tevent_signal_cb, (void *) ev);
         break;
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
@@ -139,7 +139,7 @@ tevent_ctx_add(void *ctx, struct vertoEv *ev)
 }
 
 static void
-tevent_ctx_del(void *priv, struct vertoEv *ev, void *evpriv)
+tevent_ctx_del(void *priv, const struct vertoEv *ev, void *evpriv)
 {
     talloc_free(evpriv);
 }

@@ -95,12 +95,12 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
     if (!type ## w) \
         return NULL; \
     ev_ ## type ## _init(type ## w, (EV_CB(type, (*))) __VA_ARGS__); \
-    type ## w->data = priv; \
+    type ## w->data = (void *) priv; \
     ev_ ## type ## _start(ctx, type ## w); \
     return type ## w
 
 static void *
-libev_ctx_add(void *ctx, struct vertoEv *ev)
+libev_ctx_add(void *ctx, const struct vertoEv *ev)
 {
     ev_io *iow = NULL;
     ev_timer *timerw = NULL;
@@ -131,7 +131,7 @@ libev_ctx_add(void *ctx, struct vertoEv *ev)
 }
 
 static void
-libev_ctx_del(void *ctx, struct vertoEv *ev, void *evpriv)
+libev_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 {
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_READ:

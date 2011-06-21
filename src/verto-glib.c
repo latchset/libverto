@@ -128,7 +128,7 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, struct vertoEv *ev)
+glib_ctx_add(void *ctx, const struct vertoEv *ev)
 {
     struct glibEv *gev = NULL;
 
@@ -177,7 +177,7 @@ glib_ctx_add(void *ctx, struct vertoEv *ev)
     g_source_set_priority(gev->src, priority_map[verto_get_priority(ev)]);
     g_source_set_callback(gev->src, verto_get_type(ev) == VERTO_EV_TYPE_CHILD
                                     ? (GSourceFunc) glib_callback_child
-                                    : glib_callback, ev, NULL);
+                                    : glib_callback, (void *) ev, NULL);
     gev->tag = g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context);
     if (gev->tag == 0)
         goto error;
@@ -194,7 +194,7 @@ glib_ctx_add(void *ctx, struct vertoEv *ev)
 }
 
 static void
-glib_ctx_del(void *lp, struct vertoEv *ev, void *evpriv)
+glib_ctx_del(void *lp, const struct vertoEv *ev, void *evpriv)
 {
     if (!ev)
         return;
