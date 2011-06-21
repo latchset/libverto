@@ -82,10 +82,9 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
             ev_timer_stop(loop, (ev_timer*) w);
         case VERTO_EV_TYPE_IDLE:
             ev_idle_stop(loop, (ev_idle*) w);
-        case VERTO_EV_TYPE_SIGNAL:
-            ev_signal_stop(loop, (ev_signal*) w);
         case VERTO_EV_TYPE_CHILD:
             ev_child_stop(loop, (ev_child*) w);
+        case VERTO_EV_TYPE_SIGNAL: /* Signal events are persistant */
         default:
             break;
     }
