@@ -76,7 +76,7 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
     verto_call(data);
 }
 
-static int
+static void *
 libevent_ctx_add(void *ctx, struct vertoEv *ev)
 {
     struct event *priv = NULL;
@@ -103,23 +103,21 @@ libevent_ctx_add(void *ctx, struct vertoEv *ev)
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
     default:
-        return -1; /* Not supported */
+        return NULL; /* Not supported */
     }
 
     if (!priv)
-        return ENOMEM;
+        return NULL;
 
     event_add(priv, timeout);
-    verto_set_module_private(ev, priv);
-    return 0;
+    return priv;
 }
 
 static void
-libevent_ctx_del(void *ctx, struct vertoEv *ev)
+libevent_ctx_del(void *ctx, struct vertoEv *ev, void *evpriv)
 {
-    struct event *priv = (struct event *) verto_get_module_private(ev);
-    event_del(priv);
-    event_free(priv);
+    event_del(evpriv);
+    event_free(evpriv);
 }
 
 VERTO_MODULE(libevent, event_base_init);

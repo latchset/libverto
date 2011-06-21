@@ -337,7 +337,8 @@ make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
     struct vertoEv *ev = make_ev(ctx, priority, callback, priv, type); \
     if (ev) { \
         set; \
-        if (ctx->funcs.ctx_add(ctx->modpriv, ev) != 0) { \
+        ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev); \
+        if (!ev->modpriv) { \
             free(ev); \
             return NULL; \
         } \
@@ -461,7 +462,7 @@ verto_del(struct vertoEv *ev)
 {
     if (!ev)
         return;
-    ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev);
+    ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
 }
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
@@ -528,18 +529,4 @@ verto_set_pid_status(struct vertoEv *ev, int status)
 {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
         ev->option.child.status = status;
-}
-
-void *
-verto_get_module_private(const struct vertoEv *ev)
-{
-    return ev->modpriv;
-}
-
-void *
-verto_set_module_private(struct vertoEv *ev, void *priv)
-{
-    void *oldpriv = ev->modpriv;
-    ev->modpriv = priv;
-    return oldpriv;
 }

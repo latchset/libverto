@@ -73,8 +73,8 @@ struct vertoEvCtxFuncs {
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    int   (*ctx_add)(void *ctx, struct vertoEv *ev);
-    void  (*ctx_del)(void *ctx, struct vertoEv *ev);
+    void *(*ctx_add)(void *ctx, struct vertoEv *ev);
+    void  (*ctx_del)(void *ctx, struct vertoEv *ev, void *evpriv);
 };
 
 /**
@@ -125,29 +125,5 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private);
  */
 void
 verto_set_pid_status(struct vertoEv *ev, int status);
-
-/**
- * Gets the module private stored in this vertoEv.
- *
- * This function is only used for module writers to store a context in the
- * vertoEv for later use.
- *
- * @see verto_set_module_private()
- * @return The module private.
- */
-void *
-verto_get_module_private(const struct vertoEv *ev);
-
-/**
- * Sets the module private stored in this vertoEv.
- *
- * This function is only used for module writers to store a context in the
- * vertoEv for later use.
- *
- * @see verto_get_module_private()
- * @return The previous module private.
- */
-void *
-verto_set_module_private(struct vertoEv *ev, void *priv);
 
 #endif /* VERTO_MODULE_H_ */

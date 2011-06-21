@@ -99,7 +99,7 @@ definecb(fd, uint16_t fl)
 definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
-static int
+static void *
 tevent_ctx_add(void *ctx, struct vertoEv *ev)
 {
     void *priv = NULL;
@@ -129,20 +129,19 @@ tevent_ctx_add(void *ctx, struct vertoEv *ev)
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
     default:
-        return -1; /* Not supported */
+        return NULL; /* Not supported */
     }
 
     if (!priv)
-        return ENOMEM;
+        return NULL;
 
-    verto_set_module_private(ev, priv);
-    return 0;
+    return priv;
 }
 
 static void
-tevent_ctx_del(void *priv, struct vertoEv *ev)
+tevent_ctx_del(void *priv, struct vertoEv *ev, void *evpriv)
 {
-    talloc_free(verto_set_module_private(ev, NULL));
+    talloc_free(evpriv);
 }
 
 VERTO_MODULE(tevent, g_main_context_default);

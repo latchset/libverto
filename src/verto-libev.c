@@ -93,13 +93,13 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
 #define setuptype(type, priv, ...) \
     type ## w = malloc(sizeof(ev_ ## type)); \
     if (!type ## w) \
-        return ENOMEM; \
+        return NULL; \
     ev_ ## type ## _init(type ## w, (EV_CB(type, (*))) __VA_ARGS__); \
     type ## w->data = priv; \
     ev_ ## type ## _start(ctx, type ## w); \
-    verto_set_module_private(ev, type ## w)
+    return type ## w
 
-static int
+static void *
 libev_ctx_add(void *ctx, struct vertoEv *ev)
 {
     ev_io *iow = NULL;
@@ -112,54 +112,44 @@ libev_ctx_add(void *ctx, struct vertoEv *ev)
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_READ:
             setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_READ);
-            break;
         case VERTO_EV_TYPE_WRITE:
             setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_WRITE);
-            break;
         case VERTO_EV_TYPE_TIMEOUT:
             interval = ((ev_tstamp) verto_get_interval(ev)) / 1000.0;
             setuptype(timer, ev, libev_callback, interval, interval);
-            break;
         case VERTO_EV_TYPE_IDLE:
             setuptype(idle, ev, libev_callback);
-            break;
         case VERTO_EV_TYPE_SIGNAL:
             setuptype(signal, ev, libev_callback, verto_get_signal(ev));
-            break;
         case VERTO_EV_TYPE_CHILD:
             setuptype(child, ev, libev_callback, verto_get_pid(ev), 0);
-            break;
         default:
-            return -1; /* Not supported */
+            break; /* Not supported */
     }
 
-    return 0;
+    return NULL;
 }
 
 static void
-libev_ctx_del(void *ctx, struct vertoEv *ev)
+libev_ctx_del(void *ctx, struct vertoEv *ev, void *evpriv)
 {
-    void *priv = verto_get_module_private(ev);
-    if (!priv)
-        return;
-
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_READ:
         case VERTO_EV_TYPE_WRITE:
-            ev_io_stop(ctx, priv);
+            ev_io_stop(ctx, evpriv);
         case VERTO_EV_TYPE_TIMEOUT:
-            ev_timer_stop(ctx, priv);
+            ev_timer_stop(ctx, evpriv);
         case VERTO_EV_TYPE_IDLE:
-            ev_idle_stop(ctx, priv);
+            ev_idle_stop(ctx, evpriv);
         case VERTO_EV_TYPE_SIGNAL:
-            ev_signal_stop(ctx, priv);
+            ev_signal_stop(ctx, evpriv);
         case VERTO_EV_TYPE_CHILD:
-            ev_child_stop(ctx, priv);
+            ev_child_stop(ctx, evpriv);
         default:
             break;
     }
 
-    free(priv);
+    free(evpriv);
 }
 
 VERTO_MODULE(libev, ev_loop_new);
