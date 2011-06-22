@@ -29,12 +29,17 @@
 #include <verto-libevent.h>
 #include <verto-module.h>
 
-static struct event_base *defctx;
+#include <event2/event_compat.h>
+
+/* This is technically not exposed in any headers, but it is exported from
+ * the binary. Without it, we can't provide compatibility with libevent's
+ * sense of "global." */
+extern struct event_base *event_global_current_base_;
 
 static void
 libevent_ctx_free(void *priv)
 {
-    if (priv != defctx)
+    if (priv != event_global_current_base_)
         event_base_free(priv);
 }
 
@@ -117,9 +122,9 @@ verto_new_libevent()
 struct vertoEvCtx *
 verto_default_libevent()
 {
-    if (!defctx)
-        defctx = event_base_new();
-    return verto_convert_libevent(defctx);
+    if (!event_global_current_base_)
+        event_global_current_base_ = event_init();
+    return verto_convert_libevent(event_global_current_base_);
 }
 
 struct vertoEvCtx *
