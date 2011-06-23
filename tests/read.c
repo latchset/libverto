@@ -41,7 +41,7 @@ static int count;
 static void
 error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    printf("ERROR: Read event never fired!\n");
+    printf("ERROR: Timeout!\n");
     retval = 1;
     verto_break(ctx);
 }
@@ -54,10 +54,8 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 
     count++;
     if (read(fd, buff, DATALEN) != DATALEN) {
-        /* If we got called because the fd was closed, OK.
-         * Otherwise, an error occurred. */
         if (count != 2) {
-            printf("ERROR: %s\n", strerror(errno));
+            printf("ERROR: %d: %s\n", errno, strerror(errno));
             retval = 1;
         }
 
@@ -70,6 +68,7 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
         goto out;
     }
 
+    usleep(200000); /* 0.2 seconds; make time for child to close() */
     verto_repeat(ev);
     return;
 
@@ -112,7 +111,6 @@ do_test(struct vertoEvCtx *ctx)
         usleep(100000); /* 0.1 seconds */
         if (write(fds[1], DATA, DATALEN) != DATALEN)
             exit(1);
-        usleep(100000); /* 0.1 seconds */
         close(fds[1]);
         exit(0);
     }
