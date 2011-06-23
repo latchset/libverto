@@ -100,11 +100,9 @@ glib_ctx_break(void *lp)
 static gboolean
 glib_callback(gpointer data)
 {
+    gboolean retval = verto_get_type(data) == VERTO_EV_TYPE_SIGNAL;
     verto_fire(data);
-
-    if (verto_get_type(data) == VERTO_EV_TYPE_SIGNAL)
-        return TRUE;
-    return FALSE;
+    return retval;
 }
 
 static void
