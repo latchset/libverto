@@ -87,7 +87,8 @@ do_test(struct vertoEvCtx *ctx)
     count = 0;
 
     /* Ignore when the pipe breaks */
-    verto_add_signal(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_SIG_IGN, NULL, SIGPIPE);
+    if (!verto_add_signal(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_SIG_IGN, NULL, SIGPIPE))
+        signal(SIGPIPE, SIG_IGN);
 
     if (pipe(fds) != 0)
         return 1;
