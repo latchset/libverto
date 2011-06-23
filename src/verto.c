@@ -70,6 +70,11 @@ struct vertoEv {
     } option;
 };
 
+static struct {
+    void *dll;
+    struct vertoModule *module;
+} defimpl;
+
 static inline bool
 do_load_file(const char *filename, bool reqsym, void **dll,
              struct vertoModule **module)
@@ -173,37 +178,50 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
             }
         }
     } else {
-        /* NULL was passed, so we will use the dirname of
-         * the prefix to try and find any possible plugins */
-        tmp = strdup(prefix);
-        if (tmp) {
-            char *dname = strdup(dirname(tmp));
-            free(tmp);
+        /* First, try the default implementation (aka 'the cache')*/
+        *dll = NULL;
+        *module = defimpl.module;
+        if (!(success = *module != NULL)) {
+            /* NULL was passed, so we will use the dirname of
+             * the prefix to try and find any possible plugins */
+            tmp = strdup(prefix);
+            if (tmp) {
+                char *dname = strdup(dirname(tmp));
+                free(tmp);
 
-            tmp = strdup(basename(prefix));
-            free(prefix);
-            prefix = tmp;
+                tmp = strdup(basename(prefix));
+                free(prefix);
+                prefix = tmp;
 
-            if (dname && prefix) {
-                /* Attempt to find a module we are already linked to */
-                success = do_load_dir(dname, prefix, suffix, true, dll, module);
-                if (!success) {
-#ifdef DEFAULT_LIBRARY
-                    /* Attempt to find the default module */
-                    success = load_module(DEFAULT_LIBRARY, dll, module);
-                    if (!success)
-#endif /* DEFAULT_LIBRARY */
-                    /* Attempt to load any plugin (we're desperate) */
-                    success = do_load_dir(dname, prefix, suffix, false, dll,
+                if (dname && prefix) {
+                    /* Attempt to find a module we are already linked to */
+                    success = do_load_dir(dname, prefix, suffix, true, dll,
                                           module);
+                    if (!success) {
+#ifdef DEFAULT_LIBRARY
+                        /* Attempt to find the default module */
+                        success = load_module(DEFAULT_LIBRARY, dll, module);
+                        if (!success)
+#endif /* DEFAULT_LIBRARY */
+                        /* Attempt to load any plugin (we're desperate) */
+                        success = do_load_dir(dname, prefix, suffix, false, dll,
+                                              module);
+                    }
                 }
-            }
 
-            free(dname);
+                free(dname);
+            }
         }
     }
 
     free(prefix);
+
+    if (success && !defimpl.module) {
+        defimpl.dll = *dll;
+        defimpl.module = *module;
+        *dll = NULL; // Don't free this module (aka leak the module pointer)
+    }
+
     return success;
 }
 
@@ -269,7 +287,7 @@ verto_new(const char *impl)
     ctx = module->new_ctx();
     if (ctx)
         ctx->dll = dll;
-    else
+    else if (dll)
         dlclose(dll);
 
     return ctx;
@@ -288,7 +306,7 @@ verto_default(const char *impl)
     ctx = module->def_ctx();
     if (ctx)
         ctx->dll = dll;
-    else
+    else if (dll)
         dlclose(dll);
 
     return ctx;
