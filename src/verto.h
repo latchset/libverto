@@ -117,6 +117,28 @@ struct vertoEvCtx *
 verto_default(const char *impl);
 
 /**
+ * Sets the default implementation to use by its name.
+ *
+ * This function returns 1 on success and 0 on failure.  It can fail for the
+ * following reasons:
+ *   1. The default implementation was already set via verto_set_default().
+ *   2. The implementation specified could not be found.
+ *   3. The impl argument was NULL.
+ *   4. verto_new() was already called.
+ *   5. verto_default() was already called.
+ *   6. verto_new_NAME() was already called.
+ *   7. verto_default_NAME() was already called.
+ *   8. verto_convert_NAME() was already called.
+ *
+ * @see verto_new()
+ * @see verto_default()
+ * @param impl The implementation to use.
+ * @return The default EvCtx, or NULL on error.  Call verto_free() when done.
+ */
+int
+verto_set_default(const char *impl);
+
+/**
  * Frees a vertoEvCtx.
  *
  * @param ctx The vertoEvCtx to free.

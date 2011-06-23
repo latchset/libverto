@@ -301,6 +301,13 @@ verto_default(const char *impl)
     return ctx;
 }
 
+int
+verto_set_default(const char *impl)
+{
+    void *dll = NULL; /* we will leak the dll */
+    return (!defmodule && impl && load_module(impl, &dll, &defmodule));
+}
+
 void
 verto_free(struct vertoEvCtx *ctx)
 {
