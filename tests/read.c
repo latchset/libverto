@@ -38,7 +38,7 @@
 static pid_t pid;
 static int count;
 
-void
+static void
 error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     printf("ERROR: Read event never fired!\n");
@@ -46,7 +46,7 @@ error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
     verto_break(ctx);
 }
 
-void
+static void
 cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     unsigned char buff[DATALEN];
@@ -92,6 +92,13 @@ do_test(struct vertoEvCtx *ctx)
 
     if (!verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, fds[0])) {
         printf("ERROR: Unable to add read call!\n");
+        close(fds[0]);
+        close(fds[1]);
+        return 1;
+    }
+
+    if (!verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, error_cb, NULL, 1000)) {
+        printf("ERROR: Unable to add timeout!\n");
         close(fds[0]);
         close(fds[1]);
         return 1;
