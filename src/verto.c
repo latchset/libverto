@@ -263,6 +263,11 @@ remove_ev(struct vertoEv **origin, struct vertoEv *item)
         remove_ev(&((*origin)->next), item);
 }
 
+static void
+signal_ignore(struct vertoEvCtx *ctx, struct vertoEv *ev)
+{
+}
+
 struct vertoEvCtx *
 verto_new(const char *impl)
 {
@@ -434,6 +439,8 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 {
     if (signal < 0 || signal == SIGCHLD)
         return NULL;
+    if (callback == VERTO_SIG_IGN)
+        callback = signal_ignore;
     doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
 

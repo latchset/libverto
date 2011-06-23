@@ -28,6 +28,8 @@
 #include <time.h>   /* For time_t */
 #include <unistd.h> /* For pid_t */
 
+#define VERTO_SIG_IGN ((vertoCallback) 1)
+
 struct vertoEvCtx;
 struct vertoEv;
 
