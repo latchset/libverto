@@ -1,0 +1,9 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+ 
+Name: libverto-libev
+Description: Event loop abstraction interface (libev module)
+Version: @VERSION@
+Libs: -L${libdir} -lverto-libev
+Cflags: -I${includedir}

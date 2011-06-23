@@ -1,0 +1,9 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+ 
+Name: libverto-glib
+Description: Event loop abstraction interface (glib module)
+Version: @VERSION@
+Libs: -L${libdir} -lverto-glib
+Cflags: -I${includedir}

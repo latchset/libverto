@@ -92,6 +92,13 @@ echo -e "\tlibverto-libevent\t$with_libevent"
 echo -e "\tlibverto-tevent\t\t$with_tevent"
 echo -e ""
 
-AC_CONFIG_FILES(Makefile src/Makefile tests/Makefile)
+AC_CONFIG_FILES(Makefile
+                src/Makefile
+                tests/Makefile
+                libverto-glib.pc
+                libverto-libev.pc
+                libverto-libevent.pc
+                libverto-tevent.pc
+                libverto.pc)
 AC_OUTPUT
 

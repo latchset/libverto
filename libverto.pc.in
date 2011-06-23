@@ -1,0 +1,9 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+ 
+Name: libverto
+Description: Event loop abstraction interface
+Version: @VERSION@
+Libs: -L${libdir} -lverto
+Cflags: -I${includedir}

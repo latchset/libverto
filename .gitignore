@@ -21,6 +21,7 @@ missing
 *.lo
 *.o
 *.log
+*.pc
 
 tests/idle
 tests/timeout
