@@ -35,86 +35,57 @@
 #define DATA "hello"
 #define DATALEN 5
 
-static pid_t pid;
-static int count;
+static int fds[2];
 
 static void
-error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+timeout_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     printf("ERROR: Timeout!\n");
+    if (fds[0] >= 0)
+        close(fds[0]);
+    if (fds[1] >= 0)
+        close(fds[1]);
+
     retval = 1;
     verto_break(ctx);
 }
 
 static void
-cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     unsigned char buff[DATALEN];
     int fd = verto_get_fd(ev);
+    assert(fd == fds[0]);
 
-    count++;
-    if (read(fd, buff, DATALEN) != DATALEN) {
-        if (count != 2) {
-            printf("ERROR: %d: %s\n", errno, strerror(errno));
-            retval = 1;
-        }
+    /* When we get here, the fd should be closed, so an error should occur */
+    assert(read(fd, buff, DATALEN) != DATALEN);
+    close(fd);
+    fds[0] = -1;
+    verto_break(ctx);
+}
 
-        goto out;
-    }
+static void
+data_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+{
+    unsigned char buff[DATALEN];
+    int fd = verto_get_fd(ev);
+    assert(fd == fds[0]);
 
-    if (count > 1) {
-        printf("ERROR: Second call successful!?\n");
-        retval = 1;
-        goto out;
-    }
-
-    usleep(200000); /* 0.2 seconds; make time for child to close() */
-    verto_repeat(ev);
-    return;
-
-    out:
-        waitpid(pid, NULL, 0);
-        close(fd);
-        verto_break(ctx);
-        return;
+    assert(read(fd, buff, DATALEN) == DATALEN);
+    close(fds[1]);
+    fds[1] = -1;
+    assert(verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, error_cb, NULL, fd));
 }
 
 int
 do_test(struct vertoEvCtx *ctx)
 {
-    int fds[2] = {-1, -1};
-    pid = 0;
-    count = 0;
+    fds[0] = -1;
+    fds[1] = -1;
 
-    if (pipe(fds) != 0)
-        return 1;
-
-    if (!verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, fds[0])) {
-        printf("ERROR: Unable to add read call!\n");
-        close(fds[0]);
-        close(fds[1]);
-        return 1;
-    }
-
-    if (!verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, error_cb, NULL, 1000)) {
-        printf("ERROR: Unable to add timeout!\n");
-        close(fds[0]);
-        close(fds[1]);
-        return 1;
-    }
-
-    pid = fork();
-    if (pid < 0)
-        return 1;
-    else if (pid == 0) {
-        close(fds[0]);
-        usleep(100000); /* 0.1 seconds */
-        if (write(fds[1], DATA, DATALEN) != DATALEN)
-            exit(1);
-        close(fds[1]);
-        exit(0);
-    }
-    close(fds[1]);
-
+    assert(pipe(fds) == 0);
+    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, timeout_cb, NULL, 1000));
+    assert(verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, data_cb, NULL, fds[0]));
+    assert(write(fds[1], DATA, DATALEN) == DATALEN);
     return 0;
 }
