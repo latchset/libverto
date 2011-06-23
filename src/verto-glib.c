@@ -209,7 +209,7 @@ verto_default_glib() {
 struct vertoEvCtx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
-    return verto_convert_funcs(&glib_funcs, glib_convert_(mc, ml));
+    return verto_convert(glib, glib_convert_(mc, ml));
 }
 
 

@@ -151,5 +151,6 @@ verto_convert_tevent(struct tevent_context *context)
         if (ctx->ctx != defctx)
             talloc_steal(ctx, ctx->ctx);
     }
-    return verto_convert_funcs(&tevent_funcs, ctx);
+
+    return verto_convert(tevent, ctx);
 }

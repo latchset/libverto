@@ -142,5 +142,5 @@ verto_default_libev()
 struct vertoEvCtx *
 verto_convert_libev(struct ev_loop* loop)
 {
-    return verto_convert_funcs(&libev_funcs, loop);
+    return verto_convert(libev, loop);
 }

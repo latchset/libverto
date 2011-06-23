@@ -130,5 +130,5 @@ verto_default_libevent()
 struct vertoEvCtx *
 verto_convert_libevent(struct event_base* base)
 {
-    return verto_convert_funcs(&libevent_funcs, base);
+    return verto_convert(libevent, base);
 }

@@ -70,14 +70,11 @@ struct vertoEv {
     } option;
 };
 
-static struct {
-    void *dll;
-    struct vertoModule *module;
-} defimpl;
+const struct vertoModule *defmodule;
 
 static inline bool
 do_load_file(const char *filename, bool reqsym, void **dll,
-             struct vertoModule **module)
+             const struct vertoModule **module)
 {
     *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
     if (!dll) {
@@ -110,7 +107,7 @@ do_load_file(const char *filename, bool reqsym, void **dll,
 
 static inline bool
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            bool reqsym, void **dll, struct vertoModule **module)
+            bool reqsym, void **dll, const struct vertoModule **module)
 {
     *module = NULL;
     DIR *dir = opendir(dirname);
@@ -145,7 +142,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
 }
 
 static bool
-load_module(const char *impl, void **dll, struct vertoModule **module)
+load_module(const char *impl, void **dll, const struct vertoModule **module)
 {
     bool success = false;
     Dl_info dlinfo;
@@ -153,7 +150,7 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
     char *suffix = NULL;
     char *tmp = NULL;
 
-    if (!dladdr(verto_convert_funcs, &dlinfo))
+    if (!dladdr(_verto_convert, &dlinfo))
         return NULL;
 
     suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
@@ -180,8 +177,7 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
     } else {
         /* First, try the default implementation (aka 'the cache')*/
         *dll = NULL;
-        *module = defimpl.module;
-        if (!(success = *module != NULL)) {
+        if (!(success = (*module = defmodule) != NULL)) {
             /* NULL was passed, so we will use the dirname of
              * the prefix to try and find any possible plugins */
             tmp = strdup(prefix);
@@ -215,13 +211,6 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
     }
 
     free(prefix);
-
-    if (success && !defimpl.module) {
-        defimpl.dll = *dll;
-        defimpl.module = *module;
-        *dll = NULL; // Don't free this module (aka leak the module pointer)
-    }
-
     return success;
 }
 
@@ -278,17 +267,17 @@ struct vertoEvCtx *
 verto_new(const char *impl)
 {
     void *dll = NULL;
-    struct vertoModule *module = NULL;
+    const struct vertoModule *module = NULL;
     struct vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
 
     ctx = module->new_ctx();
-    if (ctx)
-        ctx->dll = dll;
-    else if (dll)
+    if (!ctx && dll)
         dlclose(dll);
+    if (ctx && defmodule != module)
+        ctx->dll = dll;
 
     return ctx;
 }
@@ -297,17 +286,17 @@ struct vertoEvCtx *
 verto_default(const char *impl)
 {
     void *dll = NULL;
-    struct vertoModule *module = NULL;
+    const struct vertoModule *module = NULL;
     struct vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
 
     ctx = module->def_ctx();
-    if (ctx)
-        ctx->dll = dll;
-    else if (dll)
+    if (!ctx && dll)
         dlclose(dll);
+    if (ctx && defmodule != module)
+        ctx->dll = dll;
 
     return ctx;
 }
@@ -544,11 +533,13 @@ verto_del(struct vertoEv *ev)
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
 struct vertoEvCtx *
-verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
+_verto_convert(const struct vertoEvCtxFuncs *funcs,
+               const struct vertoModule *module,
+               void *ctx_private)
 {
     struct vertoEvCtx *ctx = NULL;
 
-    if (!funcs || !ctx_private)
+    if (!funcs || !module || !ctx_private)
         return NULL;
 
     ctx = vnew0(struct vertoEvCtx);
@@ -557,6 +548,10 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
 
     ctx->modpriv = ctx_private;
     ctx->funcs = *funcs;
+
+    if (!defmodule)
+        defmodule = module;
+
     return ctx;
 }
 

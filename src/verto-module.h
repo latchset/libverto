@@ -74,11 +74,20 @@ struct vertoEvCtxFuncs {
  * implementation modules.  See instead verto-NAME.h, where NAME is your
  * specific implementation.
  *
- * @param funcs The vertoEvCtxFuncs vtable.
- * @return A new EvCtx, or NULL on error.  Call verto_decref() when done.
+ * This function also sets the internal default implementation so that future
+ * calls to verto_new(NULL) or verto_default(NULL) will use this specific
+ * implementation.
+ *
+ * @param name The name of the module (unquoted)
+ * @param priv The context private to store
+ * @return A new EvCtx, or NULL on error. Call verto_free() when done.
  */
+#define verto_convert(name, priv) \
+        _verto_convert(&name ## _funcs, &_VERTO_MODULE_TABLE, priv)
 struct vertoEvCtx *
-verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private);
+_verto_convert(const struct vertoEvCtxFuncs *funcs,
+               const struct vertoModule *module,
+               void *priv);
 
 /**
  * Calls the callback of the vertoEv and then frees it via verto_del().
