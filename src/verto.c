@@ -82,8 +82,8 @@ do_load_file(const char *filename, bool reqsym, void **dll,
         return false;
     }
 
-    *module = (struct vertoModule*) dlsym(*dll, __str(_VERTO_MODULE_TABLE));
-    if (!*module || (*module)->vers != _VERTO_MODULE_VERSION
+    *module = (struct vertoModule*) dlsym(*dll, __str(VERTO_MODULE_TABLE));
+    if (!*module || (*module)->vers != VERTO_MODULE_VERSION
             || !(*module)->new_ctx || !(*module)->def_ctx)
         goto error;
 
@@ -150,7 +150,7 @@ load_module(const char *impl, void **dll, const struct vertoModule **module)
     char *suffix = NULL;
     char *tmp = NULL;
 
-    if (!dladdr(_verto_convert, &dlinfo))
+    if (!dladdr(verto_convert_funcs, &dlinfo))
         return NULL;
 
     suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
@@ -533,7 +533,7 @@ verto_del(struct vertoEv *ev)
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
 struct vertoEvCtx *
-_verto_convert(const struct vertoEvCtxFuncs *funcs,
+verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
                const struct vertoModule *module,
                void *ctx_private)
 {

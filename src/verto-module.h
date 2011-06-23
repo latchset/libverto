@@ -29,8 +29,8 @@
 
 #include <verto.h>
 
-#define _VERTO_MODULE_VERSION 1
-#define _VERTO_MODULE_TABLE verto_module_table
+#define VERTO_MODULE_VERSION 1
+#define VERTO_MODULE_TABLE verto_module_table
 #define VERTO_MODULE(name, symb) \
     static struct vertoEvCtxFuncs name ## _funcs = { \
         name ## _ctx_free, \
@@ -40,8 +40,8 @@
         name ## _ctx_add, \
         name ## _ctx_del \
     }; \
-    struct vertoModule _VERTO_MODULE_TABLE = { \
-                    _VERTO_MODULE_VERSION, \
+    struct vertoModule VERTO_MODULE_TABLE = { \
+                    VERTO_MODULE_VERSION, \
                     # name, \
                     # symb, \
                     verto_new_ ## name, \
@@ -68,11 +68,7 @@ struct vertoEvCtxFuncs {
 };
 
 /**
- * Converts an existing implementation specific loop to a verto loop.
- *
- * You probably don't want this function.  This function exists for creating
- * implementation modules.  See instead verto-NAME.h, where NAME is your
- * specific implementation.
+ * Converts an existing implementation specific loop to a vertoEvCtx.
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
@@ -83,11 +79,27 @@ struct vertoEvCtxFuncs {
  * @return A new EvCtx, or NULL on error. Call verto_free() when done.
  */
 #define verto_convert(name, priv) \
-        _verto_convert(&name ## _funcs, &_VERTO_MODULE_TABLE, priv)
+        verto_convert_funcs(&name ## _funcs, &VERTO_MODULE_TABLE, priv)
+
+/**
+ * Converts an existing implementation specific loop to a vertoEvCtx.
+ *
+ * This function also sets the internal default implementation so that future
+ * calls to verto_new(NULL) or verto_default(NULL) will use this specific
+ * implementation.
+ *
+ * If you are a module implementation, you probably want the macro above.  This
+ * function is generally used directly only when an application is attempting
+ * to expose a home-grown event loop to verto.
+ *
+ * @param name The name of the module (unquoted)
+ * @param priv The context private to store
+ * @return A new EvCtx, or NULL on error. Call verto_free() when done.
+ */
 struct vertoEvCtx *
-_verto_convert(const struct vertoEvCtxFuncs *funcs,
-               const struct vertoModule *module,
-               void *priv);
+verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
+                    const struct vertoModule *module,
+                    void *priv);
 
 /**
  * Calls the callback of the vertoEv and then frees it via verto_del().
