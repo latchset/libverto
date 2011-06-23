@@ -105,6 +105,13 @@ glib_callback(gpointer data)
     return retval;
 }
 
+gboolean
+glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
+{
+    verto_fire(data);
+    return FALSE;
+}
+
 static void
 glib_callback_child(GPid pid, gint status, gpointer data)
 {
@@ -116,12 +123,13 @@ static void *
 glib_ctx_add(void *ctx, const struct vertoEv *ev)
 {
     struct glibEv *gev = NULL;
+    enum vertoEvType type = verto_get_type(ev);
 
     gev = g_new0(struct glibEv, 1);
     if (!gev)
         return NULL;
 
-    switch (verto_get_type(ev)) {
+    switch (type) {
         case VERTO_EV_TYPE_READ:
         case VERTO_EV_TYPE_WRITE:
             gev->chan = g_io_channel_unix_new(verto_get_fd(ev));
@@ -154,15 +162,18 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev)
             return NULL; /* Not supported */
     }
 
-
     if (!gev->src)
         goto error;
 
+    if (type & (VERTO_EV_TYPE_READ | VERTO_EV_TYPE_WRITE))
+        g_source_set_callback(gev->src, (GSourceFunc) glib_callback_io, (void *) ev, NULL);
+    else if (type & VERTO_EV_TYPE_CHILD)
+        g_source_set_callback(gev->src, (GSourceFunc) glib_callback_child, (void *) ev, NULL);
+    else
+        g_source_set_callback(gev->src, glib_callback, (void *) ev, NULL);
+
     g_source_set_can_recurse(gev->src, FALSE);
     g_source_set_priority(gev->src, priority_map[verto_get_priority(ev)]);
-    g_source_set_callback(gev->src, verto_get_type(ev) == VERTO_EV_TYPE_CHILD
-                                    ? (GSourceFunc) glib_callback_child
-                                    : glib_callback, (void *) ev, NULL);
     gev->tag = g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context);
     if (gev->tag == 0)
         goto error;
