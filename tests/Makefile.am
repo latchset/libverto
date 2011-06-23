@@ -16,6 +16,6 @@ if WITH_TEVENT
 AM_CFLAGS += -DHAVE_TEVENT=1 
 endif
 
-TESTS = timeout idle child signal
+TESTS = timeout idle child signal read
 noinst_PROGRAMS = $(TESTS)
 EXTRA_DIST      = test.h
