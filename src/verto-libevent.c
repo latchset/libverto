@@ -64,7 +64,7 @@ libevent_ctx_break(void *priv)
 static void
 libevent_callback(evutil_socket_t socket, short type, void *data)
 {
-    verto_call(data);
+    verto_fire(data);
 }
 
 static void *

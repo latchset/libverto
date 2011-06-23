@@ -293,21 +293,6 @@ struct vertoEv *
 verto_repeat(const struct vertoEv *ev);
 
 /**
- * Calls the callback of the vertoEv.
- *
- * @see verto_add_read()
- * @see verto_add_write()
- * @see verto_add_timeout()
- * @see verto_add_idle()
- * @see verto_add_signal()
- * @see verto_add_child()
- * @param ev The vertoEv
- * @return The vertoEv type
- */
-void
-verto_call(struct vertoEv *ev);
-
-/**
  * Gets the private pointer of the vertoEv.
  *
  * @see verto_add_read()

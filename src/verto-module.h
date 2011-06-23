@@ -81,6 +81,23 @@ struct vertoEvCtx *
 verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private);
 
 /**
+ * Calls the callback of the vertoEv and then frees it via verto_del().
+ *
+ * The vertoEv is not freed (verto_del() is not called) if it is a signal event.
+ *
+ * @see verto_add_read()
+ * @see verto_add_write()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @see verto_del()
+ * @param ev The vertoEv
+ */
+void
+verto_fire(struct vertoEv *ev);
+
+/**
  * Sets the status of the pid which caused this event to fire.
  *
  * This function does nothing if the vertoEv is not a child type.

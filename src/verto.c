@@ -422,12 +422,6 @@ verto_repeat(const struct vertoEv *ev)
     return NULL;
 }
 
-void
-verto_call(struct vertoEv *ev)
-{
-    ev->callback(ev->ctx, ev);
-}
-
 void *
 verto_get_private(const struct vertoEv *ev)
 {
@@ -508,6 +502,14 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs, void *ctx_private)
     ctx->modpriv = ctx_private;
     ctx->funcs = *funcs;
     return ctx;
+}
+
+void
+verto_fire(struct vertoEv *ev)
+{
+    ev->callback(ev->ctx, ev);
+    if (ev->type != VERTO_EV_TYPE_SIGNAL)
+        verto_del(ev);
 }
 
 void

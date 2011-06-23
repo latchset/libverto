@@ -60,22 +60,7 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
     if (verto_get_type(w->data) == VERTO_EV_TYPE_CHILD)
         verto_set_pid_status(w->data, ((ev_child*) w)->rstatus);
 
-    verto_call(w->data);
-
-    switch (verto_get_type(w->data)) {
-        case VERTO_EV_TYPE_READ:
-        case VERTO_EV_TYPE_WRITE:
-            ev_io_stop(loop, (ev_io*) w);
-        case VERTO_EV_TYPE_TIMEOUT:
-            ev_timer_stop(loop, (ev_timer*) w);
-        case VERTO_EV_TYPE_IDLE:
-            ev_idle_stop(loop, (ev_idle*) w);
-        case VERTO_EV_TYPE_CHILD:
-            ev_child_stop(loop, (ev_child*) w);
-        case VERTO_EV_TYPE_SIGNAL: /* Signal events are persistant */
-        default:
-            break;
-    }
+    verto_fire(w->data);
 }
 
 #define setuptype(type, priv, ...) \

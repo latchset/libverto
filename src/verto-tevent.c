@@ -70,7 +70,7 @@ tevent_ctx_break(void *priv)
     static void tevent_ ## type ## _cb(struct tevent_context *c, \
                                        struct tevent_ ## type *e, \
                                        __VA_ARGS__, void *data) { \
-        verto_call(data); \
+        verto_fire(data); \
     }
 
 definecb(fd, uint16_t fl)

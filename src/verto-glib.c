@@ -100,7 +100,7 @@ glib_ctx_break(void *lp)
 static gboolean
 glib_callback(gpointer data)
 {
-    verto_call(data);
+    verto_fire(data);
 
     if (verto_get_type(data) == VERTO_EV_TYPE_SIGNAL)
         return TRUE;
@@ -111,7 +111,7 @@ static void
 glib_callback_child(GPid pid, gint status, gpointer data)
 {
     verto_set_pid_status(data, status);
-    verto_call(data);
+    verto_fire(data);
 }
 
 static void *
