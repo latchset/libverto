@@ -298,6 +298,9 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * other events, signal events WILL be freed automatically when verto_del() or
  * verto_free() is called.
  *
+ * NOTE: SIGCHLD is expressly not supported. If you want this notification,
+ * please use verto_add_child().
+ *
  * WARNNIG: Signal events can only be reliably received in the default EvCtx
  * in some implementations.  Attempting to receive signal events in non-default
  * loops may result in assert() failures.
@@ -307,6 +310,7 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  * a single process. Attempting to do so will result in undefined behavior,
  * and potentially even a crash. You have been warned.
  *
+ * @see verto_add_child()
  * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.

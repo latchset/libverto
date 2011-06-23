@@ -432,7 +432,7 @@ struct vertoEv *
 verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
                  vertoCallback callback, void *priv, int signal)
 {
-    if (signal < 0)
+    if (signal < 0 || signal == SIGCHLD)
         return NULL;
     doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
