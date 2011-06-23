@@ -46,6 +46,7 @@ struct vertoEvCtx {
     void *dll;
     void *modpriv;
     struct vertoEvCtxFuncs funcs;
+    struct vertoEv *events;
 };
 
 struct vertoChild {
@@ -54,6 +55,7 @@ struct vertoChild {
 };
 
 struct vertoEv {
+    struct vertoEv *next;
     struct vertoEvCtx *ctx;
     enum vertoEvType type;
     enum vertoEvPriority priority;
@@ -205,6 +207,55 @@ load_module(const char *impl, void **dll, struct vertoModule **module)
     return success;
 }
 
+static inline struct vertoEv *
+make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+        vertoCallback callback, void *priv, enum vertoEvType type)
+{
+    struct vertoEv *ev = NULL;
+
+    if (!ctx || !callback)
+        return NULL;
+
+    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
+                   ? priority
+                   : VERTO_EV_PRIORITY_DEFAULT;
+
+    ev = malloc(sizeof(struct vertoEv));
+    if (ev) {
+        ev->next       = NULL;
+        ev->ctx        = ctx;
+        ev->type       = type;
+        ev->priority   = priority;
+        ev->callback   = callback;
+        ev->priv       = priv;
+    }
+
+    return ev;
+}
+
+static inline void
+push_ev(struct vertoEvCtx *ctx, struct vertoEv *ev)
+{
+    if (!ctx || !ev)
+        return;
+
+    struct vertoEv *tmp = ctx->events;
+    ctx->events = ev;
+    ctx->events->next = tmp;
+}
+
+static void
+remove_ev(struct vertoEv **origin, struct vertoEv *item)
+{
+    if (!origin || !*origin || !item)
+        return;
+
+    if (*origin == item)
+        *origin = (*origin)->next;
+    else
+        remove_ev(&((*origin)->next), item);
+}
+
 struct vertoEvCtx *
 verto_new(const char *impl)
 {
@@ -254,7 +305,15 @@ verto_free(struct vertoEvCtx *ctx)
 
     if (!ctx)
         return;
+
+    /* Cancel all pending events */
+    while (ctx->events)
+        verto_del(ctx->events);
+
+    /* Free the private */
     ctx->funcs.ctx_free(ctx->modpriv);
+
+    /* Unload the module */
     if (ctx->dll) {
         /* If dlclose() unmaps memory that is registered as a signal handler
          * we have to remove that handler otherwise if that signal is fired
@@ -281,6 +340,7 @@ verto_free(struct vertoEvCtx *ctx)
         }
         sigprocmask(SIG_SETMASK, &old, NULL);
     }
+
     free(ctx);
 }
 
@@ -308,31 +368,6 @@ verto_break(struct vertoEvCtx *ctx)
     ctx->funcs.ctx_break(ctx->modpriv);
 }
 
-static inline struct vertoEv *
-make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-        vertoCallback callback, void *priv, enum vertoEvType type)
-{
-    struct vertoEv *ev = NULL;
-
-    if (!ctx || !callback)
-        return NULL;
-
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-
-    ev = malloc(sizeof(struct vertoEv));
-    if (ev) {
-        ev->ctx        = ctx;
-        ev->type       = type;
-        ev->priority   = priority;
-        ev->callback   = callback;
-        ev->priv       = priv;
-    }
-
-    return ev;
-}
-
 #define doadd(set, type) \
     struct vertoEv *ev = make_ev(ctx, priority, callback, priv, type); \
     if (ev) { \
@@ -342,6 +377,7 @@ make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
             free(ev); \
             return NULL; \
         } \
+        push_ev(ctx, ev); \
     } \
     return ev;
 
@@ -483,6 +519,8 @@ verto_del(struct vertoEv *ev)
     if (!ev)
         return;
     ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
+    remove_ev(&(ev->ctx->events), ev);
+    free(ev);
 }
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
