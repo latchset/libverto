@@ -79,7 +79,8 @@ typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
  * best implementation to use.
  *
  * First, verto will attempt to use an existing, previously loaded
- * implementation.  This is handled automatically by internal caching.
+ * implementation. This is handled automatically by internal caching of either
+ * the first implementation loaded or the one specified by verto_set_default().
  *
  * Second, verto will attempt to discern if you are already linked to any
  * of the supported implementations (to avoid wasting memory by loading
@@ -88,11 +89,13 @@ typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
  * to more than one supported implementation one of the ones linked to
  * will be chosen, but the order of the particular choice is undefined.
  *
- * Third, verto will attempt to load the compile-time default, if available.
+ * Third, verto will attempt to load the compile-time default, if defined at
+ * build time and available at runtime.
  *
- * Last, verto will attempt to load any implementation installed.  The
- * specific order of this step is undefined.
+ * Last, verto will attempt to load any implementation installed. The specific
+ * order of this step is undefined.
  *
+ * @see verto_set_default()
  * @param impl The implementation to use, or NULL.
  * @return A new EvCtx, or NULL on error.  Call verto_free() when done.
  */
@@ -104,12 +107,16 @@ verto_new(const char *impl);
  *
  * This function is essentially a singleton version of verto_new().  However,
  * since this function must return the same loop as the *_default() call of
- * the underlying implementation (if such a function exists), it is *not* a
- * global singleton, but a per-implementation singleton.
+ * the underlying implementation (if such a function exists), it is NOT a
+ * global singleton, but a per-implementation singleton. For this reason, you
+ * must call verto_free() when you are done with this loop. Even after calling
+ * verto_free() on the default vertoEvCtx, you can safely call verto_default()
+ * again and receive a new reference to the same (internally default) loop.
  *
  * In all other respects, verto_default() acts exactly like verto_new().
  *
  * @see verto_new()
+ * @see verto_free()
  * @param impl The implementation to use, or NULL.
  * @return The default EvCtx, or NULL on error.  Call verto_free() when done.
  */
@@ -141,6 +148,12 @@ verto_set_default(const char *impl);
 /**
  * Frees a vertoEvCtx.
  *
+ * When called on a default vertoEvCtx, the reference will be freed but the
+ * internal default loop will still be available via another call to
+ * verto_default().
+ *
+ * @see verto_new()
+ * @see verto_default()
  * @param ctx The vertoEvCtx to free.
  */
 void
@@ -175,11 +188,16 @@ verto_break(struct vertoEvCtx *ctx);
 /**
  * Adds a callback executed when a file descriptor is ready to be read.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * Unlike some other event loop implementations, a vertoEv is a single-fire
+ * event, that is it does not persist.  To cancel a future callback, use
+ * verto_del().  To repeat this event, use verto_repeat() inside the callback.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * The vertoEv returned is automatically freed:
+ *   1. After the callback is called.
+ *   2. When verto_del() is called.
+ *   3. When verto_free() is called on the EvCtx associated with this event.
  *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
@@ -196,11 +214,16 @@ verto_add_read(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 /**
  * Adds a callback executed when a file descriptor is ready to be written.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * Unlike some other event loop implementations, a vertoEv is a single-fire
+ * event, that is it does not persist.  To cancel a future callback, use
+ * verto_del().  To repeat this event, use verto_repeat() inside the callback.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * The vertoEv returned is automatically freed:
+ *   1. After the callback is called.
+ *   2. When verto_del() is called.
+ *   3. When verto_free() is called on the EvCtx associated with this event.
  *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
@@ -217,11 +240,16 @@ verto_add_write(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 /**
  * Adds a callback executed after a period of time.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * Unlike some other event loop implementations, a vertoEv is a single-fire
+ * event, that is it does not persist.  To cancel a future callback, use
+ * verto_del().  To repeat this event, use verto_repeat() inside the callback.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * The vertoEv returned is automatically freed:
+ *   1. After the callback is called.
+ *   2. When verto_del() is called.
+ *   3. When verto_free() is called on the EvCtx associated with this event.
  *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
@@ -238,11 +266,16 @@ verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 /**
  * Adds a callback executed when there is nothing else to do.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * Unlike some other event loop implementations, a vertoEv is a single-fire
+ * event, that is it does not persist.  To cancel a future callback, use
+ * verto_del().  To repeat this event, use verto_repeat() inside the callback.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * The vertoEv returned is automatically freed:
+ *   1. After the callback is called.
+ *   2. When verto_del() is called.
+ *   3. When verto_free() is called on the EvCtx associated with this event.
  *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
@@ -258,11 +291,23 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 /**
  * Adds a callback executed when a signal is received.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * NOTE: This event is different than other vertoEv events. A signal vertoEv is
+ * NOT a single-fire event, but is called every time a signal is received.
+ * Relatedly, it is NOT freed after the callback is called. Further,
+ * verto_repeat() does nothing when called on a signal event. However, like
+ * other events, signal events WILL be freed automatically when verto_del() or
+ * verto_free() is called.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * WARNNIG: Signal events can only be reliably received in the default EvCtx
+ * in some implementations.  Attempting to receive signal events in non-default
+ * loops may result in assert() failures.
  *
+ * WARNING: While verto does its best to protect you from crashes, there is
+ * essentially no way to do signal events if you mix multiple implementations in
+ * a single process. Attempting to do so will result in undefined behavior,
+ * and potentially even a crash. You have been warned.
+ *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
@@ -279,11 +324,16 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 /**
  * Adds a callback executed when a child process exits.
  *
- * To stop this callback from being called for future events, see verto_del().
+ * Unlike some other event loop implementations, a vertoEv is a single-fire
+ * event, that is it does not persist.  To cancel a future callback, use
+ * verto_del().  To repeat this event, use verto_repeat() inside the callback.
  *
- * The vertoEv returned is automatically freed either when verto_del() is
- * called or when its vertoEvCtx is freed.
+ * The vertoEv returned is automatically freed:
+ *   1. After the callback is called.
+ *   2. When verto_del() is called.
+ *   3. When verto_free() is called on the EvCtx associated with this event.
  *
+ * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
  * @param priority The priority of the event (priority is not supported on
