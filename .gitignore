@@ -1,7 +1,6 @@
 .deps
 .libs
 aclocal.m4
-autogen.sh
 autom4te.cache
 config.guess
 config.log
