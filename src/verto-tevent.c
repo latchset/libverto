@@ -80,40 +80,31 @@ definecb(signal, int signum, int count, void *siginfo)
 static void *
 tevent_ctx_add(void *ctx, const struct vertoEv *ev)
 {
-    void *priv = NULL;
     time_t interval;
     struct timeval tv;
-
-    interval = verto_get_interval(ev);
-    tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
+    uint16_t flags = 0;
 
     switch (verto_get_type(ev)) {
-    case VERTO_EV_TYPE_READ:
-        priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
-                             TEVENT_FD_READ, tevent_fd_cb, (void *) ev);
-        break;
-    case VERTO_EV_TYPE_WRITE:
-        priv = tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
-                             TEVENT_FD_WRITE, tevent_fd_cb, (void *) ev);
-        break;
+    case VERTO_EV_TYPE_IO:
+        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+            flags |= TEVENT_FD_READ;
+        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+            flags |= TEVENT_FD_WRITE;
+        return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_io_fd(ev),
+                             flags, tevent_fd_cb, (void *) ev);
     case VERTO_EV_TYPE_TIMEOUT:
-        priv = tevent_add_timer(tctx(ctx), tctx(ctx), tv,
+        interval = verto_get_interval(ev);
+        tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
+        return tevent_add_timer(tctx(ctx), tctx(ctx), tv,
                                 tevent_timer_cb, (void *) ev);
-        break;
     case VERTO_EV_TYPE_SIGNAL:
-        priv = tevent_add_signal(tctx(ctx), tctx(ctx), verto_get_signal(ev),
+        return tevent_add_signal(tctx(ctx), tctx(ctx), verto_get_signal(ev),
                                  0, tevent_signal_cb, (void *) ev);
-        break;
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
     default:
         return NULL; /* Not supported */
     }
-
-    if (!priv)
-        return NULL;
-
-    return priv;
 }
 
 static void

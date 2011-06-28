@@ -81,12 +81,15 @@ libev_ctx_add(void *ctx, const struct vertoEv *ev)
     ev_signal *signalw = NULL;
     ev_child *childw = NULL;
     ev_tstamp interval;
+    int events = EV_NONE;
 
     switch (verto_get_type(ev)) {
-        case VERTO_EV_TYPE_READ:
-            setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_READ);
-        case VERTO_EV_TYPE_WRITE:
-            setuptype(io, ev, libev_callback, verto_get_fd(ev), EV_WRITE);
+        case VERTO_EV_TYPE_IO:
+            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+                events |= EV_READ;
+            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+                events |= EV_WRITE;
+            setuptype(io, ev, libev_callback, verto_get_io_fd(ev), events);
         case VERTO_EV_TYPE_TIMEOUT:
             interval = ((ev_tstamp) verto_get_interval(ev)) / 1000.0;
             setuptype(timer, ev, libev_callback, interval, interval);
@@ -97,18 +100,15 @@ libev_ctx_add(void *ctx, const struct vertoEv *ev)
         case VERTO_EV_TYPE_CHILD:
             setuptype(child, ev, libev_callback, verto_get_pid(ev), 0);
         default:
-            break; /* Not supported */
+            return NULL; /* Not supported */
     }
-
-    return NULL;
 }
 
 static void
 libev_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 {
     switch (verto_get_type(ev)) {
-        case VERTO_EV_TYPE_READ:
-        case VERTO_EV_TYPE_WRITE:
+        case VERTO_EV_TYPE_IO:
             ev_io_stop(ctx, evpriv);
         case VERTO_EV_TYPE_TIMEOUT:
             ev_timer_stop(ctx, evpriv);

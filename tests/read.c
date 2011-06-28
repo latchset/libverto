@@ -36,6 +36,7 @@
 #define DATALEN 5
 
 static int fds[2];
+static int callcount = 0;
 
 static void
 timeout_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
@@ -51,41 +52,39 @@ timeout_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 }
 
 static void
-error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     unsigned char buff[DATALEN];
-    int fd = verto_get_fd(ev);
+    int fd = 0;
+    ssize_t bytes = 0;
+
+    fd = verto_get_io_fd(ev);
     assert(fd == fds[0]);
 
-    /* When we get here, the fd should be closed, so an error should occur */
-    assert(read(fd, buff, DATALEN) != DATALEN);
-    close(fd);
-    fds[0] = -1;
-    verto_break(ctx);
-}
-
-static void
-data_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
-{
-    unsigned char buff[DATALEN];
-    int fd = verto_get_fd(ev);
-    assert(fd == fds[0]);
-
-    assert(read(fd, buff, DATALEN) == DATALEN);
-    close(fds[1]);
-    fds[1] = -1;
-    assert(verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, error_cb, NULL, fd));
+    bytes = read(fd, buff, DATALEN);
+    if (callcount++ == 0) {
+        assert(bytes == DATALEN);
+        close(fds[1]);
+        fds[1] = -1;
+    }
+    else {
+        assert(bytes != DATALEN);
+        close(fd);
+        fds[0] = -1;
+        verto_break(ctx);
+    }
 }
 
 int
 do_test(struct vertoEvCtx *ctx)
 {
+    callcount = 0;
     fds[0] = -1;
     fds[1] = -1;
 
     assert(pipe(fds) == 0);
     assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, timeout_cb, NULL, 1000));
-    assert(verto_add_read(ctx, VERTO_EV_PRIORITY_DEFAULT, data_cb, NULL, fds[0]));
+    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, fds[0], VERTO_EV_IO_FLAG_READ));
     assert(write(fds[1], DATA, DATALEN) == DATALEN);
     return 0;
 }

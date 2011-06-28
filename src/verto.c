@@ -54,6 +54,11 @@ struct vertoChild {
     int   status;
 };
 
+struct vertoIO {
+    int fd;
+    enum vertoEvIOFlags flags;
+};
+
 struct vertoEv {
     struct vertoEv *next;
     struct vertoEvCtx *ctx;
@@ -63,10 +68,10 @@ struct vertoEv {
     void *priv;
     void *modpriv;
     union {
-        int fd;
         int signal;
         time_t interval;
         struct vertoChild child;
+        struct vertoIO io;
     } option;
 };
 
@@ -401,22 +406,13 @@ verto_break(struct vertoEvCtx *ctx)
     return ev;
 
 struct vertoEv *
-verto_add_read(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-               vertoCallback callback, void *priv, int fd)
+verto_add_io(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+             vertoCallback callback, void *priv, int fd,
+             enum vertoEvIOFlags flags)
 {
     if (fd < 0)
         return NULL;
-    doadd(ev->option.fd = fd, VERTO_EV_TYPE_READ);
-}
-
-
-struct vertoEv *
-verto_add_write(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                vertoCallback callback, void *priv, int fd)
-{
-    if (fd < 0)
-        return NULL;
-    doadd(ev->option.fd = fd, VERTO_EV_TYPE_WRITE);
+    doadd(ev->option.io.fd = fd; ev->option.io.flags = flags, VERTO_EV_TYPE_IO);
 }
 
 struct vertoEv *
@@ -457,20 +453,13 @@ struct vertoEv *
 verto_repeat(const struct vertoEv *ev)
 {
     switch (ev->type) {
-    case VERTO_EV_TYPE_READ:
-        return verto_add_read(ev->ctx, ev->priority, ev->callback, ev->priv,
-                              ev->option.fd);
-    case VERTO_EV_TYPE_WRITE:
-        return verto_add_write(ev->ctx, ev->priority, ev->callback, ev->priv,
-                               ev->option.fd);
     case VERTO_EV_TYPE_TIMEOUT:
         return verto_add_timeout(ev->ctx, ev->priority, ev->callback, ev->priv,
                                  ev->option.interval);
     case VERTO_EV_TYPE_IDLE:
         return verto_add_idle(ev->ctx, ev->priority, ev->callback, ev->priv);
     case VERTO_EV_TYPE_CHILD:
-        return verto_add_child(ev->ctx, ev->priority, ev->callback, ev->priv,
-                               ev->option.child.pid);
+    case VERTO_EV_TYPE_IO:
     case VERTO_EV_TYPE_SIGNAL:
     default:
         break; /* Not supported */
@@ -498,11 +487,19 @@ verto_get_priority(const struct vertoEv *ev)
 }
 
 int
-verto_get_fd(const struct vertoEv *ev)
+verto_get_io_fd(const struct vertoEv *ev)
 {
-    if (ev && (ev->type & (VERTO_EV_TYPE_READ | VERTO_EV_TYPE_WRITE)))
-        return ev->option.fd;
+    if (ev && (ev->type & VERTO_EV_TYPE_IO))
+        return ev->option.io.fd;
     return -1;
+}
+
+enum vertoEvIOFlags
+verto_get_io_flags(const struct vertoEv *ev)
+{
+    if (ev && (ev->type & VERTO_EV_TYPE_IO))
+        return ev->option.io.flags;
+    return VERTO_EV_IO_FLAG_NONE;
 }
 
 time_t
@@ -573,7 +570,7 @@ void
 verto_fire(struct vertoEv *ev)
 {
     ev->callback(ev->ctx, ev);
-    if (ev->type != VERTO_EV_TYPE_SIGNAL)
+    if (!(ev->type & (VERTO_EV_TYPE_SIGNAL | VERTO_EV_TYPE_IO)))
         verto_del(ev);
 }
 

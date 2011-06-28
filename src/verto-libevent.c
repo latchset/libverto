@@ -36,6 +36,9 @@
  * sense of "global." */
 extern struct event_base *event_global_current_base_;
 
+/* DEFAULT, LOW, MEDIUM, HIGH */
+static const int priority_map[4] = { 1, 2, 1, 0 };
+
 static void
 libevent_ctx_free(void *priv)
 {
@@ -73,13 +76,16 @@ libevent_ctx_add(void *ctx, const struct vertoEv *ev)
     struct event *priv = NULL;
     struct timeval *timeout = NULL;
     struct timeval tv;
+    int flags = EV_PERSIST;
 
     switch (verto_get_type(ev)) {
-    case VERTO_EV_TYPE_READ:
-        priv = event_new(ctx, verto_get_fd(ev), EV_READ, libevent_callback, (void *) ev);
-        break;
-    case VERTO_EV_TYPE_WRITE:
-        priv = event_new(ctx, verto_get_fd(ev), EV_WRITE, libevent_callback, (void *) ev);
+    case VERTO_EV_TYPE_IO:
+        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+            flags |= EV_READ;
+        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+            flags |= EV_WRITE;
+        priv = event_new(ctx, verto_get_io_fd(ev), flags,
+                         libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_TIMEOUT:
         timeout = &tv;
@@ -100,6 +106,7 @@ libevent_ctx_add(void *ctx, const struct vertoEv *ev)
     if (!priv)
         return NULL;
 
+    event_priority_set(priv, priority_map[verto_get_priority(ev)]);
     event_add(priv, timeout);
     return priv;
 }
@@ -130,5 +137,6 @@ verto_default_libevent()
 struct vertoEvCtx *
 verto_convert_libevent(struct event_base* base)
 {
+    event_base_priority_init(base, 3);
     return verto_convert(libevent, base);
 }

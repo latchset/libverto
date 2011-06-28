@@ -34,12 +34,11 @@ struct vertoEvCtx;
 struct vertoEv;
 
 enum vertoEvType {
-    VERTO_EV_TYPE_READ = 1,
-    VERTO_EV_TYPE_WRITE = 1 << 1,
-    VERTO_EV_TYPE_TIMEOUT = 1 << 2,
-    VERTO_EV_TYPE_IDLE = 1 << 3,
-    VERTO_EV_TYPE_SIGNAL = 1 << 4,
-    VERTO_EV_TYPE_CHILD = 1 << 5,
+    VERTO_EV_TYPE_IO = 1,
+    VERTO_EV_TYPE_TIMEOUT = 1 << 1,
+    VERTO_EV_TYPE_IDLE = 1 << 2,
+    VERTO_EV_TYPE_SIGNAL = 1 << 3,
+    VERTO_EV_TYPE_CHILD = 1 << 4,
     _VERTO_EV_TYPE_MAX = VERTO_EV_TYPE_CHILD
 };
 
@@ -49,6 +48,12 @@ enum vertoEvPriority {
     VERTO_EV_PRIORITY_MEDIUM = 2,
     VERTO_EV_PRIORITY_HIGH = 3,
     _VERTO_EV_PRIORITY_MAX = VERTO_EV_PRIORITY_HIGH
+};
+
+enum vertoEvIOFlags {
+    VERTO_EV_IO_FLAG_NONE  = 0,
+    VERTO_EV_IO_FLAG_READ  = 1,
+    VERTO_EV_IO_FLAG_WRITE = 1 << 1,
 };
 
 typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
@@ -188,16 +193,7 @@ void
 verto_break(struct vertoEvCtx *ctx);
 
 /**
- * Adds a callback executed when a file descriptor is ready to be read.
- *
- * Unlike some other event loop implementations, a vertoEv is a single-fire
- * event, that is it does not persist.  To cancel a future callback, use
- * verto_del().  To repeat this event, use verto_repeat() inside the callback.
- *
- * The vertoEv returned is automatically freed:
- *   1. After the callback is called.
- *   2. When verto_del() is called.
- *   3. When verto_free() is called on the EvCtx associated with this event.
+ * Adds a callback executed when a file descriptor is ready to be read/written.
  *
  * @see verto_repeat()
  * @see verto_del()
@@ -210,34 +206,9 @@ verto_break(struct vertoEvCtx *ctx);
  * @return The vertoEv registered with the event context.
  */
 struct vertoEv *
-verto_add_read(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-               vertoCallback callback, void *priv, int fd);
-
-/**
- * Adds a callback executed when a file descriptor is ready to be written.
- *
- * Unlike some other event loop implementations, a vertoEv is a single-fire
- * event, that is it does not persist.  To cancel a future callback, use
- * verto_del().  To repeat this event, use verto_repeat() inside the callback.
- *
- * The vertoEv returned is automatically freed:
- *   1. After the callback is called.
- *   2. When verto_del() is called.
- *   3. When verto_free() is called on the EvCtx associated with this event.
- *
- * @see verto_repeat()
- * @see verto_del()
- * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
- * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
- * @param fd The file descriptor to watch for writes.
- * @return The vertoEv registered with the event context.
- */
-struct vertoEv *
-verto_add_write(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                vertoCallback callback, void *priv, int fd);
+verto_add_io(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
+             vertoCallback callback, void *priv, int fd,
+             enum vertoEvIOFlags flags);
 
 /**
  * Adds a callback executed after a period of time.
@@ -424,7 +395,10 @@ verto_get_priority(const struct vertoEv *ev);
  * @return The file descriptor, or -1 if not a read/write event.
  */
 int
-verto_get_fd(const struct vertoEv *ev);
+verto_get_io_fd(const struct vertoEv *ev);
+
+enum vertoEvIOFlags
+verto_get_io_flags(const struct vertoEv *ev);
 
 /**
  * Gets the interval associated with a timeout vertoEv.
