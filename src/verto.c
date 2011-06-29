@@ -58,7 +58,7 @@ struct vertoEv {
     struct vertoEv *next;
     struct vertoEvCtx *ctx;
     enum vertoEvType type;
-    vertoCallback callback;
+    vertoCallback *callback;
     void *priv;
     void *modpriv;
     enum vertoEvFlag flags;
@@ -218,7 +218,7 @@ load_module(const char *impl, void **dll, const struct vertoModule **module)
 }
 
 static inline struct vertoEv *
-make_ev(struct vertoEvCtx *ctx, vertoCallback callback, void *priv,
+make_ev(struct vertoEvCtx *ctx, vertoCallback *callback, void *priv,
         enum vertoEvType type, enum vertoEvFlag flags)
 {
     struct vertoEv *ev = NULL;
@@ -401,7 +401,7 @@ verto_break(struct vertoEvCtx *ctx)
 
 struct vertoEv *
 verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-             vertoCallback callback, void *priv, int fd)
+             vertoCallback *callback, void *priv, int fd)
 {
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
         return NULL;
@@ -410,21 +410,21 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 
 struct vertoEv *
 verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                  vertoCallback callback, void *priv, time_t interval)
+                  vertoCallback *callback, void *priv, time_t interval)
 {
     doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 struct vertoEv *
 verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-               vertoCallback callback, void *priv)
+               vertoCallback *callback, void *priv)
 {
     doadd(, VERTO_EV_TYPE_IDLE);
 }
 
 struct vertoEv *
 verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                 vertoCallback callback, void *priv, int signal)
+                 vertoCallback *callback, void *priv, int signal)
 {
     if (signal < 0 || signal == SIGCHLD)
         return NULL;
@@ -435,7 +435,7 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 
 struct vertoEv *
 verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                vertoCallback callback, void *priv, pid_t pid)
+                vertoCallback *callback, void *priv, pid_t pid)
 {
     if (pid < 1 || (flags & VERTO_EV_FLAG_PERSIST)) /* persist makes no sense */
         return NULL;

@@ -28,7 +28,7 @@
 #include <time.h>   /* For time_t */
 #include <unistd.h> /* For pid_t */
 
-#define VERTO_SIG_IGN ((vertoCallback) 1)
+#define VERTO_SIG_IGN ((vertoCallback *) 1)
 
 struct vertoEvCtx;
 struct vertoEv;
@@ -52,7 +52,7 @@ enum vertoEvFlag {
     _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_WRITE
 };
 
-typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
+typedef void (vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
 
 /**
  * Creates a new event context using an optionally specified implementation.
@@ -208,7 +208,7 @@ verto_break(struct vertoEvCtx *ctx);
  */
 struct vertoEv *
 verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-             vertoCallback callback, void *priv, int fd);
+             vertoCallback *callback, void *priv, int fd);
 
 /**
  * Adds a callback executed after a period of time.
@@ -230,7 +230,7 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  */
 struct vertoEv *
 verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                  vertoCallback callback, void *priv, time_t interval);
+                  vertoCallback *callback, void *priv, time_t interval);
 
 /**
  * Adds a callback executed when there is nothing else to do.
@@ -251,7 +251,7 @@ verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  */
 struct vertoEv *
 verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-               vertoCallback callback, void *priv);
+               vertoCallback *callback, void *priv);
 
 /**
  * Adds a callback executed when a signal is received.
@@ -287,7 +287,7 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  */
 struct vertoEv *
 verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                 vertoCallback callback, void *priv, int signal);
+                 vertoCallback *callback, void *priv, int signal);
 
 /**
  * Adds a callback executed when a child process exits.
@@ -308,7 +308,7 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  */
 struct vertoEv *
 verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
-                vertoCallback callback, void *priv, pid_t pid);
+                vertoCallback *callback, void *priv, pid_t pid);
 
 /**
  * Gets the private pointer of the vertoEv.
