@@ -69,6 +69,8 @@ struct vertoEv {
     void *modpriv;
     enum vertoEvFlag flags;
     bool persists;
+    size_t depth;
+    bool deleted;
     union {
         int signal;
         time_t interval;
@@ -532,6 +534,16 @@ verto_del(struct vertoEv *ev)
 {
     if (!ev)
         return;
+
+    /* If the event is freed in the callback, we just set a flag so that
+     * verto_fire() can actually do the delete when the callback completes.
+     *
+     * If we don't do this, than verto_fire() will access freed memory. */
+    if (ev->depth > 0) {
+        ev->deleted = true;
+        return;
+    }
+
     ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
     remove_ev(&(ev->ctx->events), ev);
     free(ev);
@@ -567,14 +579,19 @@ verto_fire(struct vertoEv *ev)
 {
     void *priv;
 
+    ev->depth++;
     ev->callback(ev->ctx, ev);
-    if (!(ev->flags & VERTO_EV_FLAG_PERSIST))
-        verto_del(ev);
-    else if (!ev->persists) {
-        priv = ev->ctx->funcs.ctx_add(ev->ctx->modpriv, ev, &ev->persists);
-        assert(priv); /* TODO: create an error callback */
-        ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
-        ev->modpriv = priv;
+    ev->depth--;
+
+    if (ev->depth == 0) {
+        if (!(ev->flags & VERTO_EV_FLAG_PERSIST) || ev->deleted)
+            verto_del(ev);
+        else if (!ev->persists) {
+            priv = ev->ctx->funcs.ctx_add(ev->ctx->modpriv, ev, &ev->persists);
+            assert(priv); /* TODO: create an error callback */
+            ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
+            ev->modpriv = priv;
+        }
     }
 }
 
