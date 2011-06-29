@@ -192,15 +192,20 @@ verto_break(struct vertoEvCtx *ctx);
 /**
  * Adds a callback executed when a file descriptor is ready to be read/written.
  *
- * @see verto_repeat()
+ * All vertoEv events are automatically freed when their parent vertoEvCtx is
+ * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
+ * provided, the event will repeat until verto_del() is called. If
+ * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
+ * after its execution. In either case, you may call verto_del() at any time
+ * to prevent the event from executing.
+ *
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
+ * @param flags The flags to set (at least one VERTO_EV_FLAG_IO* required).
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
  * @param fd The file descriptor to watch for reads.
- * @return The vertoEv registered with the event context.
+ * @return The vertoEv registered with the event context or NULL on error.
  */
 struct vertoEv *
 verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
@@ -209,20 +214,16 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 /**
  * Adds a callback executed after a period of time.
  *
- * Unlike some other event loop implementations, a vertoEv is a single-fire
- * event, that is it does not persist.  To cancel a future callback, use
- * verto_del().  To repeat this event, use verto_repeat() inside the callback.
+ * All vertoEv events are automatically freed when their parent vertoEvCtx is
+ * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
+ * provided, the event will repeat until verto_del() is called. If
+ * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
+ * after its execution. In either case, you may call verto_del() at any time
+ * to prevent the event from executing.
  *
- * The vertoEv returned is automatically freed:
- *   1. After the callback is called.
- *   2. When verto_del() is called.
- *   3. When verto_free() is called on the EvCtx associated with this event.
- *
- * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
+ * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
  * @param interval Time period to wait before firing (in milliseconds).
@@ -235,20 +236,16 @@ verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 /**
  * Adds a callback executed when there is nothing else to do.
  *
- * Unlike some other event loop implementations, a vertoEv is a single-fire
- * event, that is it does not persist.  To cancel a future callback, use
- * verto_del().  To repeat this event, use verto_repeat() inside the callback.
+ * All vertoEv events are automatically freed when their parent vertoEvCtx is
+ * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
+ * provided, the event will repeat until verto_del() is called. If
+ * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
+ * after its execution. In either case, you may call verto_del() at any time
+ * to prevent the event from executing.
  *
- * The vertoEv returned is automatically freed:
- *   1. After the callback is called.
- *   2. When verto_del() is called.
- *   3. When verto_free() is called on the EvCtx associated with this event.
- *
- * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
+ * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
  * @return The vertoEv registered with the event context.
@@ -260,12 +257,12 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 /**
  * Adds a callback executed when a signal is received.
  *
- * NOTE: This event is different than other vertoEv events. A signal vertoEv is
- * NOT a single-fire event, but is called every time a signal is received.
- * Relatedly, it is NOT freed after the callback is called. Further,
- * verto_repeat() does nothing when called on a signal event. However, like
- * other events, signal events WILL be freed automatically when verto_del() or
- * verto_free() is called.
+ * All vertoEv events are automatically freed when their parent vertoEvCtx is
+ * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
+ * provided, the event will repeat until verto_del() is called. If
+ * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
+ * after its execution. In either case, you may call verto_del() at any time
+ * to prevent the event from executing.
  *
  * NOTE: SIGCHLD is expressly not supported. If you want this notification,
  * please use verto_add_child().
@@ -283,8 +280,7 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
+ * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
  * @param signal The signal to watch for.
@@ -297,20 +293,15 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 /**
  * Adds a callback executed when a child process exits.
  *
- * Unlike some other event loop implementations, a vertoEv is a single-fire
- * event, that is it does not persist.  To cancel a future callback, use
- * verto_del().  To repeat this event, use verto_repeat() inside the callback.
+ * This event will be freed automatically after its execution. Due to the
+ * nature of a process' life-cycle, child events cannot persist (processes only
+ * exit once). This function returns NULL if you attempt to use
+ * VERTO_EV_FLAG_PERSIST. You may, of course, call verto_del() at any time to
+ * prevent the callback from firing.
  *
- * The vertoEv returned is automatically freed:
- *   1. After the callback is called.
- *   2. When verto_del() is called.
- *   3. When verto_free() is called on the EvCtx associated with this event.
- *
- * @see verto_repeat()
  * @see verto_del()
  * @param ctx The vertoEvCtx which will fire the callback.
- * @param priority The priority of the event (priority is not supported on
- *                 all implementations).
+ * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
  * @param child The pid of the child to watch for.
@@ -323,8 +314,7 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 /**
  * Gets the private pointer of the vertoEv.
  *
- * @see verto_add_read()
- * @see verto_add_write()
+ * @see verto_add_io()
  * @see verto_add_timeout()
  * @see verto_add_idle()
  * @see verto_add_signal()
@@ -338,8 +328,7 @@ verto_get_private(const struct vertoEv *ev);
 /**
  * Gets the type of the vertoEv.
  *
- * @see verto_add_read()
- * @see verto_add_write()
+ * @see verto_add_io()
  * @see verto_add_timeout()
  * @see verto_add_idle()
  * @see verto_add_signal()
@@ -350,14 +339,24 @@ verto_get_private(const struct vertoEv *ev);
 enum vertoEvType
 verto_get_type(const struct vertoEv *ev);
 
+/**
+ * Gets the flags associated with the given vertoEv.
+ *
+ * @see verto_add_io()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param ev The vertoEv
+ * @return The vertoEv type
+ */
 enum vertoEvFlag
 verto_get_flags(const struct vertoEv *ev);
 
 /**
  * Gets the file descriptor associated with a read/write vertoEv.
  *
- * @see verto_add_read()
- * @see verto_add_write()
+ * @see verto_add_io()
  * @param ev The vertoEv to retrieve the file descriptor from.
  * @return The file descriptor, or -1 if not a read/write event.
  */
@@ -409,8 +408,7 @@ verto_get_pid_status(const struct vertoEv *ev);
  *
  * The event and its contents cannot be used after this call.
  *
- * @see verto_add_read()
- * @see verto_add_write()
+ * @see verto_add_io()
  * @see verto_add_timeout()
  * @see verto_add_idle()
  * @see verto_add_signal()
