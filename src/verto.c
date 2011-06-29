@@ -356,7 +356,7 @@ verto_free(struct vertoEvCtx *ctx)
         sigfillset(&block);
         sigprocmask(SIG_SETMASK, &block, &old);
         dlclose(ctx->dll);
-        for (i=0 ; i < _NSIG ; i++) {
+        for (i=1 ; i < _NSIG ; i++) {
             if (sigaction(i, NULL, &act) == 0) {
                 if (act.sa_flags & SA_SIGINFO) {
                     if (dladdr(act.sa_sigaction, &info) == 0)
