@@ -27,13 +27,6 @@
 #include <verto-glib.h>
 #include <verto-module.h>
 
-/* DEFAULT, LOW, MEDIUM, HIGH */
-static gint priority_map[4] = {
-        G_PRIORITY_DEFAULT,
-        G_PRIORITY_LOW,
-        G_PRIORITY_DEFAULT_IDLE,
-        G_PRIORITY_HIGH };
-
 struct glibEvCtx {
     GMainContext *context;
     GMainLoop *loop;
@@ -122,8 +115,9 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 {
     struct glibEv *gev = NULL;
     enum vertoEvType type = verto_get_type(ev);
+    enum vertoEvFlag flags = verto_get_flags(ev);
 
-    *persists = verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
+    *persists = flags & VERTO_EV_FLAG_PERSIST;
 
     gev = g_new0(struct glibEv, 1);
     if (!gev)
@@ -131,15 +125,15 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 
     switch (type) {
         case VERTO_EV_TYPE_IO:
-            gev->chan = g_io_channel_unix_new(verto_get_io_fd(ev));
+            gev->chan = g_io_channel_unix_new(verto_get_fd(ev));
             if (!gev->chan)
                 goto error;
             g_io_channel_set_close_on_unref(gev->chan, FALSE);
 
             GIOCondition cond = 0;
-            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+            if (flags & VERTO_EV_FLAG_IO_READ)
                 cond |= G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+            if (flags & VERTO_EV_FLAG_IO_WRITE)
                 cond |= G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
             gev->src = g_io_create_watch(gev->chan, cond);
             break;
@@ -174,8 +168,14 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     else
         g_source_set_callback(gev->src, glib_callback, (void *) ev, NULL);
 
+    if (flags & VERTO_EV_FLAG_PRIORITY_HIGH)
+        g_source_set_priority(gev->src, G_PRIORITY_HIGH);
+    else if (flags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+        g_source_set_priority(gev->src, G_PRIORITY_DEFAULT_IDLE);
+    else if (flags & VERTO_EV_FLAG_PRIORITY_LOW)
+        g_source_set_priority(gev->src, G_PRIORITY_LOW);
+
     g_source_set_can_recurse(gev->src, FALSE);
-    g_source_set_priority(gev->src, priority_map[verto_get_priority(ev)]);
     if (g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context) == 0)
         goto error;
 

@@ -36,9 +36,6 @@
  * sense of "global." */
 extern struct event_base *event_global_current_base_;
 
-/* DEFAULT, LOW, MEDIUM, HIGH */
-static const int priority_map[4] = { 1, 2, 1, 0 };
-
 static void
 libevent_ctx_free(void *priv)
 {
@@ -77,19 +74,20 @@ libevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     struct timeval *timeout = NULL;
     struct timeval tv;
     int flags = 0;
+    enum vertoEvFlag evflags = verto_get_flags(ev);
 
-    *persists = verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
+    *persists = evflags & VERTO_EV_FLAG_PERSIST;
     if (*persists)
         flags |= EV_PERSIST;
 
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
-        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+        if (evflags & VERTO_EV_FLAG_IO_READ)
             flags |= EV_READ;
-        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+        if (evflags & VERTO_EV_FLAG_IO_WRITE)
             flags |= EV_WRITE;
-        priv = event_new(ctx, verto_get_io_fd(ev), flags,
-                         libevent_callback, (void *) ev);
+        priv = event_new(ctx, verto_get_fd(ev), flags, libevent_callback,
+                         (void *) ev);
         break;
     case VERTO_EV_TYPE_TIMEOUT:
         timeout = &tv;
@@ -111,7 +109,13 @@ libevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     if (!priv)
         return NULL;
 
-    event_priority_set(priv, priority_map[verto_get_priority(ev)]);
+    if (evflags & VERTO_EV_FLAG_PRIORITY_HIGH)
+        event_priority_set(priv, 0);
+    else if (evflags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+        event_priority_set(priv, 1);
+    else if (evflags & VERTO_EV_FLAG_PRIORITY_LOW)
+        event_priority_set(priv, 2);
+
     event_add(priv, timeout);
     return priv;
 }

@@ -57,7 +57,7 @@ void
 cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     if (++callcount == 2) {
-        verto_add_idle(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, cb, NULL);
+        verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb, NULL);
         verto_del(ev);
     }
 }
@@ -66,8 +66,7 @@ int
 do_test(struct vertoEvCtx *ctx)
 {
     callcount = 0;
-    idle = verto_add_idle(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL);
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE,
-                             exit_cb, NULL, idle ? 100 : 1));
+    idle = verto_add_idle(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL);
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, idle ? 100 : 1));
     return 0;
 }

@@ -54,16 +54,10 @@ struct vertoChild {
     int   status;
 };
 
-struct vertoIO {
-    int fd;
-    enum vertoEvIOFlag flags;
-};
-
 struct vertoEv {
     struct vertoEv *next;
     struct vertoEvCtx *ctx;
     enum vertoEvType type;
-    enum vertoEvPriority priority;
     vertoCallback callback;
     void *priv;
     void *modpriv;
@@ -72,10 +66,10 @@ struct vertoEv {
     size_t depth;
     bool deleted;
     union {
+        int fd;
         int signal;
         time_t interval;
         struct vertoChild child;
-        struct vertoIO io;
     } option;
 };
 
@@ -224,25 +218,19 @@ load_module(const char *impl, void **dll, const struct vertoModule **module)
 }
 
 static inline struct vertoEv *
-make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-        vertoCallback callback, void *priv, enum vertoEvType type,
-        enum vertoEvFlag flags)
+make_ev(struct vertoEvCtx *ctx, vertoCallback callback, void *priv,
+        enum vertoEvType type, enum vertoEvFlag flags)
 {
     struct vertoEv *ev = NULL;
 
     if (!ctx || !callback)
         return NULL;
 
-    priority = priority < _VERTO_EV_PRIORITY_MAX + 1
-                   ? priority
-                   : VERTO_EV_PRIORITY_DEFAULT;
-
     ev = malloc(sizeof(struct vertoEv));
     if (ev) {
         memset(ev, 0, sizeof(struct vertoEv));
         ev->ctx        = ctx;
         ev->type       = type;
-        ev->priority   = priority;
         ev->callback   = callback;
         ev->priv       = priv;
         ev->flags      = flags;
@@ -399,7 +387,7 @@ verto_break(struct vertoEvCtx *ctx)
 }
 
 #define doadd(set, type) \
-    struct vertoEv *ev = make_ev(ctx, priority, callback, priv, type, flags); \
+    struct vertoEv *ev = make_ev(ctx, callback, priv, type, flags); \
     if (ev) { \
         set; \
         ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev, &ev->persists); \
@@ -412,36 +400,31 @@ verto_break(struct vertoEvCtx *ctx)
     return ev;
 
 struct vertoEv *
-verto_add_io(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-             enum vertoEvFlag flags, vertoCallback callback, void *priv, int fd,
-             enum vertoEvIOFlag ioflags)
+verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+             vertoCallback callback, void *priv, int fd)
 {
-    if (fd < 0)
+    if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
         return NULL;
-    doadd(ev->option.io.fd = fd;
-          ev->option.io.flags = ioflags,
-          VERTO_EV_TYPE_IO);
+    doadd(ev->option.fd = fd, VERTO_EV_TYPE_IO);
 }
 
 struct vertoEv *
-verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                  enum vertoEvFlag flags, vertoCallback callback, void *priv,
-                  time_t interval)
+verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+                  vertoCallback callback, void *priv, time_t interval)
 {
     doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 struct vertoEv *
-verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-               enum vertoEvFlag flags, vertoCallback callback, void *priv)
+verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+               vertoCallback callback, void *priv)
 {
     doadd(, VERTO_EV_TYPE_IDLE);
 }
 
 struct vertoEv *
-verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                 enum vertoEvFlag flags, vertoCallback callback, void *priv,
-                 int signal)
+verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+                 vertoCallback callback, void *priv, int signal)
 {
     if (signal < 0 || signal == SIGCHLD)
         return NULL;
@@ -451,9 +434,8 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 }
 
 struct vertoEv *
-verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                enum vertoEvFlag flags, vertoCallback callback, void *priv,
-                pid_t pid)
+verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+                vertoCallback callback, void *priv, pid_t pid)
 {
     if (pid < 1 || (flags & VERTO_EV_FLAG_PERSIST)) /* persist makes no sense */
         return NULL;
@@ -472,12 +454,6 @@ verto_get_type(const struct vertoEv *ev)
     return ev->type;
 }
 
-enum vertoEvPriority
-verto_get_priority(const struct vertoEv *ev)
-{
-    return ev->priority;
-}
-
 enum vertoEvFlag
 verto_get_flags(const struct vertoEv *ev)
 {
@@ -485,19 +461,11 @@ verto_get_flags(const struct vertoEv *ev)
 }
 
 int
-verto_get_io_fd(const struct vertoEv *ev)
+verto_get_fd(const struct vertoEv *ev)
 {
     if (ev && (ev->type & VERTO_EV_TYPE_IO))
-        return ev->option.io.fd;
+        return ev->option.fd;
     return -1;
-}
-
-enum vertoEvIOFlag
-verto_get_io_flags(const struct vertoEv *ev)
-{
-    if (ev && (ev->type & VERTO_EV_TYPE_IO))
-        return ev->option.io.flags;
-    return VERTO_EV_IO_FLAG_NONE;
 }
 
 time_t

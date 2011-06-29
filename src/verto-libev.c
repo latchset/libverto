@@ -86,11 +86,11 @@ libev_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     *persists = true;
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_IO:
-            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
                 events |= EV_READ;
-            if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
                 events |= EV_WRITE;
-            setuptype(io, ev, libev_callback, verto_get_io_fd(ev), events);
+            setuptype(io, ev, libev_callback, verto_get_fd(ev), events);
         case VERTO_EV_TYPE_TIMEOUT:
             interval = ((ev_tstamp) verto_get_interval(ev)) / 1000.0;
             setuptype(timer, ev, libev_callback, interval, interval);

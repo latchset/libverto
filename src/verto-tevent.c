@@ -87,11 +87,11 @@ tevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     *persists = true;
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
-        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
             flags |= TEVENT_FD_READ;
-        if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_WRITE)
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
             flags |= TEVENT_FD_WRITE;
-        return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_io_fd(ev),
+        return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
                              flags, tevent_fd_cb, (void *) ev);
     case VERTO_EV_TYPE_TIMEOUT:
         *persists = false;

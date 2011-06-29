@@ -58,7 +58,7 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
     int fd = 0;
     ssize_t bytes = 0;
 
-    fd = verto_get_io_fd(ev);
+    fd = verto_get_fd(ev);
     assert(fd == fds[0]);
 
     bytes = read(fd, buff, DATALEN);
@@ -71,6 +71,7 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
         assert(bytes != DATALEN);
         close(fd);
         fds[0] = -1;
+        verto_del(ev);
         verto_break(ctx);
     }
 }
@@ -83,8 +84,8 @@ do_test(struct vertoEvCtx *ctx)
     fds[1] = -1;
 
     assert(pipe(fds) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
-    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL, fds[0], VERTO_EV_IO_FLAG_READ));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_PERSIST | VERTO_EV_FLAG_IO_READ, cb, NULL, fds[0]));
     assert(write(fds[1], DATA, DATALEN) == DATALEN);
     return 0;
 }

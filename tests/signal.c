@@ -64,12 +64,11 @@ do_test(struct vertoEvCtx *ctx)
     pid_t pid = 0;
 
     count = 0;
-    if (!verto_add_signal(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL, SIGUSR1)) {
+    if (!verto_add_signal(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL, SIGUSR1)) {
         printf("WARNING: Signal not supported!\n");
         count = 2;
     } else {
-        verto_add_signal(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE,
-                         VERTO_SIG_IGN, NULL, SIGUSR2);
+        verto_add_signal(ctx, VERTO_EV_FLAG_NONE, VERTO_SIG_IGN, NULL, SIGUSR2);
 
         pid = fork();
         if (pid < 0)
@@ -85,8 +84,7 @@ do_test(struct vertoEvCtx *ctx)
         }
     }
 
-    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE,
-                      exit_cb, (void *) (uintptr_t) pid, 100);
+    verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, (void *) (uintptr_t) pid, 100);
 
     return 0;
 }

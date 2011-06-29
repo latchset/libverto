@@ -57,26 +57,24 @@ error_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
     int fd = 0;
 
     /* When we get here, the fd should be closed, so an error should occur */
-    fd = verto_get_io_fd(ev);
+    fd = verto_get_fd(ev);
     assert(write(fd, DATA, DATALEN) != DATALEN);
-    verto_del(ev);
-    verto_break(ctx);
     close(fd);
     fds[1] = -1;
+    verto_break(ctx);
 }
 
 static void
 read_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     unsigned char buff[DATALEN];
-    int fd = verto_get_io_fd(ev);
+    int fd = verto_get_fd(ev);
 
     assert(read(fd, buff, DATALEN) == DATALEN);
     close(fd);
     fds[0] = -1;
 
-    verto_del(ev); /* We don't want this callback called because of close() */
-    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, error_cb, NULL, fds[1], VERTO_EV_IO_FLAG_WRITE));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, error_cb, NULL, fds[1]));
 }
 
 static void
@@ -84,11 +82,10 @@ write_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
     int fd = 0;
 
-    fd = verto_get_io_fd(ev);
+    fd = verto_get_fd(ev);
     assert(write(fd, DATA, DATALEN) == DATALEN);
 
-    verto_del(ev);
-    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, read_cb, NULL, fds[0], VERTO_EV_IO_FLAG_READ));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_READ, read_cb, NULL, fds[0]));
 }
 
 int
@@ -98,11 +95,11 @@ do_test(struct vertoEvCtx *ctx)
     fds[0] = -1;
     fds[1] = -1;
 
-    if (!verto_add_signal(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, VERTO_SIG_IGN, NULL, SIGPIPE))
+    if (!verto_add_signal(ctx, VERTO_EV_FLAG_NONE, VERTO_SIG_IGN, NULL, SIGPIPE))
         signal(SIGPIPE, SIG_IGN);
 
     assert(pipe(fds) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
-    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, write_cb, NULL, fds[1], VERTO_EV_IO_FLAG_WRITE));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, write_cb, NULL, fds[1]));
     return 0;
 }
