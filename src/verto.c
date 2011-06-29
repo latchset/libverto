@@ -239,7 +239,7 @@ make_ev(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
 
     ev = malloc(sizeof(struct vertoEv));
     if (ev) {
-        ev->next       = NULL;
+        memset(ev, 0, sizeof(struct vertoEv));
         ev->ctx        = ctx;
         ev->type       = type;
         ev->priority   = priority;
