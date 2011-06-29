@@ -34,12 +34,11 @@ struct vertoEvCtx;
 struct vertoEv;
 
 enum vertoEvType {
-    VERTO_EV_TYPE_IO = 1,
-    VERTO_EV_TYPE_TIMEOUT = 1 << 1,
-    VERTO_EV_TYPE_IDLE = 1 << 2,
-    VERTO_EV_TYPE_SIGNAL = 1 << 3,
-    VERTO_EV_TYPE_CHILD = 1 << 4,
-    _VERTO_EV_TYPE_MAX = VERTO_EV_TYPE_CHILD
+    VERTO_EV_TYPE_IO,
+    VERTO_EV_TYPE_TIMEOUT,
+    VERTO_EV_TYPE_IDLE,
+    VERTO_EV_TYPE_SIGNAL,
+    VERTO_EV_TYPE_CHILD
 };
 
 enum vertoEvFlag {
