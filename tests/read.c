@@ -83,8 +83,8 @@ do_test(struct vertoEvCtx *ctx)
     fds[1] = -1;
 
     assert(pipe(fds) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, timeout_cb, NULL, 1000));
-    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, fds[0], VERTO_EV_IO_FLAG_READ));
+    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
+    assert(verto_add_io(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL, fds[0], VERTO_EV_IO_FLAG_READ));
     assert(write(fds[1], DATA, DATALEN) == DATALEN);
     return 0;
 }

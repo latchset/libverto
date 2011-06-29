@@ -78,12 +78,13 @@ definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
 static void *
-tevent_ctx_add(void *ctx, const struct vertoEv *ev)
+tevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 {
     time_t interval;
     struct timeval tv;
     uint16_t flags = 0;
 
+    *persists = true;
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
         if (verto_get_io_flags(ev) & VERTO_EV_IO_FLAG_READ)
@@ -93,6 +94,7 @@ tevent_ctx_add(void *ctx, const struct vertoEv *ev)
         return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_io_fd(ev),
                              flags, tevent_fd_cb, (void *) ev);
     case VERTO_EV_TYPE_TIMEOUT:
+        *persists = false;
         interval = verto_get_interval(ev);
         tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
         return tevent_add_timer(tctx(ctx), tctx(ctx), tv,

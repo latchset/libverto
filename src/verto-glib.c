@@ -99,16 +99,15 @@ glib_ctx_break(void *lp)
 static gboolean
 glib_callback(gpointer data)
 {
-    gboolean retval = verto_get_type(data) == VERTO_EV_TYPE_SIGNAL;
+    gboolean persists = verto_get_flags(data) & VERTO_EV_FLAG_PERSIST;
     verto_fire(data);
-    return retval;
+    return persists;
 }
 
 gboolean
 glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
 {
-    verto_fire(data);
-    return TRUE;
+    return glib_callback(data);
 }
 
 static void
@@ -119,10 +118,12 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, const struct vertoEv *ev)
+glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 {
     struct glibEv *gev = NULL;
     enum vertoEvType type = verto_get_type(ev);
+
+    *persists = verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
 
     gev = g_new0(struct glibEv, 1);
     if (!gev)
@@ -150,6 +151,7 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev)
             break;
         case VERTO_EV_TYPE_CHILD:
             gev->src = g_child_watch_source_new(verto_get_pid(ev));
+            *persists = false;
             break;
         case VERTO_EV_TYPE_SIGNAL:
 #if GLIB_MAJOR_VERSION >= 2

@@ -24,16 +24,30 @@
 
 #include "test.h"
 
-static int occurrences;
+static int callcount;
+struct vertoEv *idle = NULL;
 
 void
 exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    if (occurrences == 0)
-        printf("WARNING: Idle not supported!\n");
-    else if (occurrences > 1) {
-        printf("ERROR: Idle must not recur!\n");
-        retval = 1;
+    retval = 1;
+    switch (callcount) {
+        case 1:
+            printf("ERROR: Idle (persist) did not recur!\n");
+            break;
+        case 2:
+            printf("ERROR: Idle (non-persist) did not fire!\n");
+            break;
+        case 0:
+            if (idle) {
+                printf("ERROR: Idle (persist) did not fire!\n");
+                break;
+            }
+            printf("WARNING: Idle not supported!\n");
+        case 3:
+            retval = 0;
+        default:
+            break;
     }
 
     verto_break(ctx);
@@ -42,19 +56,18 @@ exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 void
 cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    if (++occurrences > 1)
-        exit_cb(ctx, ev);
-
-    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
+    if (++callcount == 2) {
+        verto_add_idle(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, cb, NULL);
+        verto_del(ev);
+    }
 }
 
 int
 do_test(struct vertoEvCtx *ctx)
 {
-    occurrences = 0;
-
-    if (!verto_add_idle(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL))
-        verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 1);
-
+    callcount = 0;
+    idle = verto_add_idle(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL);
+    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE,
+                             exit_cb, NULL, idle ? 100 : 1));
     return 0;
 }

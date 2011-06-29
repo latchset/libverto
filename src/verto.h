@@ -50,10 +50,17 @@ enum vertoEvPriority {
     _VERTO_EV_PRIORITY_MAX = VERTO_EV_PRIORITY_HIGH
 };
 
-enum vertoEvIOFlags {
+enum vertoEvFlag {
+    VERTO_EV_FLAG_NONE = 0,
+    VERTO_EV_FLAG_PERSIST = 1,
+    _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_PERSIST
+};
+
+enum vertoEvIOFlag {
     VERTO_EV_IO_FLAG_NONE  = 0,
     VERTO_EV_IO_FLAG_READ  = 1,
     VERTO_EV_IO_FLAG_WRITE = 1 << 1,
+    _VERTO_EV_IO_FLAG_MAX = VERTO_EV_IO_FLAG_WRITE
 };
 
 typedef void (*vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
@@ -207,8 +214,8 @@ verto_break(struct vertoEvCtx *ctx);
  */
 struct vertoEv *
 verto_add_io(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-             vertoCallback callback, void *priv, int fd,
-             enum vertoEvIOFlags flags);
+             enum vertoEvFlag flags, vertoCallback callback, void *priv, int fd,
+             enum vertoEvIOFlag ioflags);
 
 /**
  * Adds a callback executed after a period of time.
@@ -234,7 +241,8 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  */
 struct vertoEv *
 verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                  vertoCallback callback, void *priv, time_t interval);
+                  enum vertoEvFlag flags, vertoCallback callback, void *priv,
+                  time_t interval);
 
 /**
  * Adds a callback executed when there is nothing else to do.
@@ -259,7 +267,7 @@ verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  */
 struct vertoEv *
 verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-               vertoCallback callback, void *priv);
+               enum vertoEvFlag flags, vertoCallback callback, void *priv);
 
 /**
  * Adds a callback executed when a signal is received.
@@ -296,7 +304,8 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  */
 struct vertoEv *
 verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                 vertoCallback callback, void *priv, int signal);
+                 enum vertoEvFlag flags, vertoCallback callback, void *priv,
+                 int signal);
 
 /**
  * Adds a callback executed when a child process exits.
@@ -322,24 +331,8 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
  */
 struct vertoEv *
 verto_add_child(struct vertoEvCtx *ctx, enum vertoEvPriority priority,
-                vertoCallback callback, void *priv, pid_t pid);
-
-/**
- * Duplicates the current event so that it will be fired again.
- *
- * Always returns NULL for signal events since they are persistent.
- *
- * @see verto_add_read()
- * @see verto_add_write()
- * @see verto_add_timeout()
- * @see verto_add_idle()
- * @see verto_add_child()
- * @see verto_del()
- * @param ev The vertoEv to add.
- * @return The new vertoEv registered with the event context.
- */
-struct vertoEv *
-verto_repeat(const struct vertoEv *ev);
+                enum vertoEvFlag flags, vertoCallback callback, void *priv,
+                pid_t pid);
 
 /**
  * Gets the private pointer of the vertoEv.
@@ -386,6 +379,9 @@ verto_get_type(const struct vertoEv *ev);
 enum vertoEvPriority
 verto_get_priority(const struct vertoEv *ev);
 
+enum vertoEvFlag
+verto_get_flags(const struct vertoEv *ev);
+
 /**
  * Gets the file descriptor associated with a read/write vertoEv.
  *
@@ -397,7 +393,7 @@ verto_get_priority(const struct vertoEv *ev);
 int
 verto_get_io_fd(const struct vertoEv *ev);
 
-enum vertoEvIOFlags
+enum vertoEvIOFlag
 verto_get_io_flags(const struct vertoEv *ev);
 
 /**

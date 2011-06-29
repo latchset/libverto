@@ -22,10 +22,12 @@
  * SOFTWARE.
  */
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include <signal.h>
+#include <string.h>
 
 #include <verto.h>
 
@@ -81,4 +83,15 @@ main(int argc, char **argv)
     }
 
     return retval;
+}
+
+void *passert(void *p) {
+    assert(p);
+    return p;
+}
+
+#define new0(type) _new0(sizeof(type))
+void * _new0(ssize_t size) {
+    void *p = malloc(size);
+    return passert(p ? memset(p, 0, size) : p);
 }

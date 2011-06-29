@@ -71,12 +71,16 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
 }
 
 static void *
-libevent_ctx_add(void *ctx, const struct vertoEv *ev)
+libevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 {
     struct event *priv = NULL;
     struct timeval *timeout = NULL;
     struct timeval tv;
-    int flags = EV_PERSIST;
+    int flags = 0;
+
+    *persists = verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
+    if (*persists)
+        flags |= EV_PERSIST;
 
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
@@ -91,10 +95,11 @@ libevent_ctx_add(void *ctx, const struct vertoEv *ev)
         timeout = &tv;
         tv.tv_sec = verto_get_interval(ev) / 1000;
         tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
-        priv = event_new(ctx, -1, EV_TIMEOUT, libevent_callback, (void *) ev);
+        priv = event_new(ctx, -1, EV_TIMEOUT | flags, libevent_callback,
+                         (void *) ev);
         break;
     case VERTO_EV_TYPE_SIGNAL:
-        priv = event_new(ctx, verto_get_signal(ev), EV_SIGNAL | EV_PERSIST,
+        priv = event_new(ctx, verto_get_signal(ev), EV_SIGNAL | flags,
                          libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_IDLE:

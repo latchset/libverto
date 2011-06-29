@@ -64,9 +64,12 @@ do_test(struct vertoEvCtx *ctx)
         exit(EXITCODE);
     }
 
-    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
+    verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, exit_cb, NULL, 100);
 
-    if (!verto_add_child(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, pid)) {
+    /* Persist makes no sense for children events */
+    assert(!verto_add_child(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL, pid));
+
+    if (!verto_add_child(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, cb, NULL, pid)) {
         printf("WARNING: Child not supported!\n");
         usleep(100000);
         waitpid(pid, &exitstatus, 0);

@@ -26,46 +26,55 @@
 
 #include "test.h"
 
+#define SLEEP 10
 #define M2U(m) ((m) * 1000)
 
-static struct timeval starttime;
-static struct timeval endtime;
+static int callcount;
+struct timeval starttime;
 
-void
+static bool
+elapsed(time_t min, time_t max)
+{
+    struct timeval tv;
+    long long diff;
+
+    assert(gettimeofday(&tv, NULL) == 0);
+    diff = (tv.tv_sec - starttime.tv_sec) * M2U(1000)
+            + tv.tv_usec - starttime.tv_usec;
+
+    assert(gettimeofday(&starttime, NULL) == 0);
+    if (diff < M2U(min) || diff > M2U(max)) {
+        printf("ERROR: Timeout is out-of-bounds!\n");
+        return false;
+    }
+    return true;
+}
+
+static void
 exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
+    assert(callcount == 3);
     verto_break(ctx);
 }
 
-void
+static void
 cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 {
-    long long diff;
-
-    if (starttime.tv_sec == endtime.tv_sec && starttime.tv_usec == endtime.tv_usec) {
-        gettimeofday(&endtime, NULL);
-
-        diff = (endtime.tv_sec - starttime.tv_sec) * M2U(1000)
-                + endtime.tv_usec - starttime.tv_usec;
-
-        retval = diff < M2U(50) || diff > M2U(100);
-        if (retval != 0)
-            printf("ERROR: Timeout is out-of-bounds!\n");
-        verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, exit_cb, NULL, 100);
-        return;
+    assert(elapsed(SLEEP, SLEEP*2));
+    if (++callcount == 3)
+        assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, exit_cb, NULL, SLEEP*2));
+    else if (callcount == 2) {
+        assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_NONE, cb, NULL, SLEEP));
+        verto_del(ev);
     }
-
-    printf("ERROR: Timeout must not repeat!\n");
-    retval = 1;
-    exit_cb(ctx, ev);
 }
 
 int
 do_test(struct vertoEvCtx *ctx)
 {
-    gettimeofday(&starttime, NULL);
-    endtime = starttime;
+    callcount = 0;
 
-    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, cb, NULL, 50));
+    assert(gettimeofday(&starttime, NULL) == 0);
+    assert(verto_add_timeout(ctx, VERTO_EV_PRIORITY_DEFAULT, VERTO_EV_FLAG_PERSIST, cb, NULL, SLEEP));
     return 0;
 }
