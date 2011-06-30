@@ -1,3 +1,5 @@
+AM_LDFLAGS = -export-symbols-regex '^verto_'
+
 include_HEADERS      = verto.h
 lib_LTLIBRARIES      = libverto.la
 
