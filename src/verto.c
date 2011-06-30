@@ -463,7 +463,7 @@ verto_get_flags(const struct vertoEv *ev)
 int
 verto_get_fd(const struct vertoEv *ev)
 {
-    if (ev && (ev->type & VERTO_EV_TYPE_IO))
+    if (ev && (ev->type == VERTO_EV_TYPE_IO))
         return ev->option.fd;
     return -1;
 }
@@ -471,7 +471,7 @@ verto_get_fd(const struct vertoEv *ev)
 time_t
 verto_get_interval(const struct vertoEv *ev)
 {
-    if (ev && (ev->type & VERTO_EV_TYPE_TIMEOUT))
+    if (ev && (ev->type == VERTO_EV_TYPE_TIMEOUT))
         return ev->option.interval;
     return 0;
 }
@@ -479,7 +479,7 @@ verto_get_interval(const struct vertoEv *ev)
 int
 verto_get_signal(const struct vertoEv *ev)
 {
-    if (ev && (ev->type & VERTO_EV_TYPE_SIGNAL))
+    if (ev && (ev->type == VERTO_EV_TYPE_SIGNAL))
         return ev->option.signal;
     return -1;
 }
