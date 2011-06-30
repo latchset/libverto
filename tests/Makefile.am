@@ -16,6 +16,7 @@ if WITH_TEVENT
 AM_CFLAGS += -DHAVE_TEVENT=1 
 endif
 
-TESTS = timeout idle child signal read write
-noinst_PROGRAMS = $(TESTS)
-EXTRA_DIST      = test.h
+check_PROGRAMS = timeout idle child signal read write
+EXTRA_DIST     = test.h
+TESTS = abi $(check_PROGRAMS)
+TESTS_ENVIRONMENT = env LIBVERTO=$(top_builddir)/src/.libs/libverto.so
