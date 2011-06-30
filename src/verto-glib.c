@@ -161,9 +161,9 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
     if (!gev->src)
         goto error;
 
-    if (type & VERTO_EV_TYPE_IO)
+    if (type == VERTO_EV_TYPE_IO)
         g_source_set_callback(gev->src, (GSourceFunc) glib_callback_io, (void *) ev, NULL);
-    else if (type & VERTO_EV_TYPE_CHILD)
+    else if (type == VERTO_EV_TYPE_CHILD)
         g_source_set_callback(gev->src, (GSourceFunc) glib_callback_child, (void *) ev, NULL);
     else
         g_source_set_callback(gev->src, glib_callback, (void *) ev, NULL);
