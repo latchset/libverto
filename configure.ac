@@ -33,6 +33,8 @@ if test x$with_glib = xyes; then
 		echo "glib library requires glib-2.0!"
 		exit 1
 	fi
+else
+	with_glib=no
 fi
 AM_CONDITIONAL([WITH_GLIB], [test x$with_glib = xyes])
 
@@ -49,6 +51,8 @@ if test x$with_libev = xyes; then
 		echo "libev library requires libev!"
 		exit 1
 	fi
+else
+	with_libev=no
 fi
 AM_CONDITIONAL([WITH_LIBEV], [test x$with_libev = xyes])
 
@@ -65,6 +69,8 @@ if test x$with_libevent = xyes; then
 		echo "libevent library requires libevent >= 2.0!"
 		exit 1
 	fi
+else
+	with_libevent=no
 fi
 AM_CONDITIONAL([WITH_LIBEVENT], [test x$with_libevent = xyes])
 
@@ -81,6 +87,8 @@ if test x$with_tevent = xyes; then
 		echo "tevent library requires tevent!"
 		exit 1
 	fi
+else
+	with_tevent=no
 fi
 AM_CONDITIONAL([WITH_TEVENT], [test x$with_tevent = xyes])
 
