@@ -78,7 +78,7 @@ definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
 static void *
-tevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
+tevent_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
 {
     time_t interval;
     struct timeval tv;
@@ -110,20 +110,20 @@ tevent_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 }
 
 static void
-tevent_ctx_del(void *priv, const struct vertoEv *ev, void *evpriv)
+tevent_ctx_del(void *priv, const vertoEv *ev, void *evpriv)
 {
     talloc_free(evpriv);
 }
 
 VERTO_MODULE(tevent, g_main_context_default);
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_new_tevent()
 {
     return verto_convert_tevent(tevent_context_init(NULL));
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_default_tevent()
 {
     if (!defctx)
@@ -131,7 +131,7 @@ verto_default_tevent()
     return verto_convert_tevent(defctx);
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_convert_tevent(struct tevent_context *context)
 {
     struct teventEvCtx *ctx;

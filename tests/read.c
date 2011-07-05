@@ -39,7 +39,7 @@ static int fds[2];
 static int callcount = 0;
 
 static void
-timeout_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+timeout_cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     printf("ERROR: Timeout!\n");
     if (fds[0] >= 0)
@@ -52,7 +52,7 @@ timeout_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 }
 
 static void
-cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     unsigned char buff[DATALEN];
     int fd = 0;
@@ -77,7 +77,7 @@ cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 }
 
 int
-do_test(struct vertoEvCtx *ctx)
+do_test(vertoEvCtx *ctx)
 {
     callcount = 0;
     fds[0] = -1;

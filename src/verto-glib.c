@@ -111,11 +111,11 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
+glib_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
 {
     struct glibEv *gev = NULL;
-    enum vertoEvType type = verto_get_type(ev);
-    enum vertoEvFlag flags = verto_get_flags(ev);
+    vertoEvType type = verto_get_type(ev);
+    vertoEvFlag flags = verto_get_flags(ev);
 
     *persists = flags & VERTO_EV_FLAG_PERSIST;
 
@@ -195,7 +195,7 @@ glib_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 }
 
 static void
-glib_ctx_del(void *lp, const struct vertoEv *ev, void *evpriv)
+glib_ctx_del(void *lp, const vertoEv *ev, void *evpriv)
 {
     if (!ev)
         return;
@@ -212,17 +212,17 @@ glib_ctx_del(void *lp, const struct vertoEv *ev, void *evpriv)
 
 VERTO_MODULE(glib, g_main_context_default);
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_new_glib() {
     return verto_convert_glib(g_main_context_new(), NULL);
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_default_glib() {
     return verto_convert_glib(g_main_context_default(), NULL);
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
     return verto_convert(glib, glib_convert_(mc, ml));

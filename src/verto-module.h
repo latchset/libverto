@@ -34,7 +34,7 @@
 #define VERTO_MODULE_VERSION 1
 #define VERTO_MODULE_TABLE verto_module_table
 #define VERTO_MODULE(name, symb) \
-    static struct vertoEvCtxFuncs name ## _funcs = { \
+    static vertoEvCtxFuncs name ## _funcs = { \
         name ## _ctx_free, \
         name ## _ctx_run, \
         name ## _ctx_run_once, \
@@ -42,32 +42,32 @@
         name ## _ctx_add, \
         name ## _ctx_del \
     }; \
-    struct vertoModule VERTO_MODULE_TABLE = { \
-                    VERTO_MODULE_VERSION, \
-                    # name, \
-                    # symb, \
-                    verto_new_ ## name, \
-                    verto_default_ ## name, \
+    vertoModule VERTO_MODULE_TABLE = { \
+        VERTO_MODULE_VERSION, \
+        # name, \
+        # symb, \
+        verto_new_ ## name, \
+        verto_default_ ## name, \
     };
 
-typedef struct vertoEvCtx *(*vertoEvCtxConstructor)();
+typedef vertoEvCtx *(*vertoEvCtxConstructor)();
 
-struct vertoModule {
+typedef struct {
     unsigned int vers;
     const char *name;
     const char *symb;
     vertoEvCtxConstructor new_ctx;
     vertoEvCtxConstructor def_ctx;
-};
+} vertoModule;
 
-struct vertoEvCtxFuncs {
+typedef struct {
     void  (*ctx_free)(void *ctx);
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    void *(*ctx_add)(void *ctx, const struct vertoEv *ev, bool *persists);
-    void  (*ctx_del)(void *ctx, const struct vertoEv *ev, void *evpriv);
-};
+    void *(*ctx_add)(void *ctx, const vertoEv *ev, bool *persists);
+    void  (*ctx_del)(void *ctx, const vertoEv *ev, void *evpriv);
+} vertoEvCtxFuncs;
 
 /**
  * Converts an existing implementation specific loop to a vertoEvCtx.
@@ -98,9 +98,9 @@ struct vertoEvCtxFuncs {
  * @param priv The context private to store
  * @return A new EvCtx, or NULL on error. Call verto_free() when done.
  */
-struct vertoEvCtx *
-verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
-                    const struct vertoModule *module,
+vertoEvCtx *
+verto_convert_funcs(const vertoEvCtxFuncs *funcs,
+                    const vertoModule *module,
                     void *priv);
 
 /**
@@ -118,7 +118,7 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
  * @param ev The vertoEv
  */
 void
-verto_fire(struct vertoEv *ev);
+verto_fire(vertoEv *ev);
 
 /**
  * Sets the status of the pid which caused this event to fire.
@@ -130,6 +130,6 @@ verto_fire(struct vertoEv *ev);
  * @param status The pid status.
  */
 void
-verto_set_pid_status(struct vertoEv *ev, int status);
+verto_set_pid_status(vertoEv *ev, int status);
 
 #endif /* VERTO_MODULE_H_ */

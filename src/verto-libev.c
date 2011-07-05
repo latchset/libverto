@@ -73,7 +73,7 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
     return type ## w
 
 static void *
-libev_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
+libev_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
 {
     ev_io *iow = NULL;
     ev_timer *timerw = NULL;
@@ -107,7 +107,7 @@ libev_ctx_add(void *ctx, const struct vertoEv *ev, bool *persists)
 }
 
 static void
-libev_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
+libev_ctx_del(void *ctx, const vertoEv *ev, void *evpriv)
 {
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_IO:
@@ -129,19 +129,19 @@ libev_ctx_del(void *ctx, const struct vertoEv *ev, void *evpriv)
 
 VERTO_MODULE(libev, ev_loop_new);
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_new_libev()
 {
     return verto_convert_libev(ev_loop_new(EVFLAG_AUTO));
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_default_libev()
 {
     return verto_convert_libev(ev_default_loop(EVFLAG_AUTO));
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_convert_libev(struct ev_loop* loop)
 {
     return verto_convert(libev, loop);

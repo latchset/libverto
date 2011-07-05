@@ -33,7 +33,7 @@
 static int count;
 
 void
-exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+exit_cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     if ((pid_t) (uintptr_t) verto_get_private(ev) != 0)
         waitpid((pid_t) (uintptr_t) verto_get_private(ev), NULL, 0);
@@ -53,13 +53,13 @@ exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 }
 
 void
-cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     count++;
 }
 
 int
-do_test(struct vertoEvCtx *ctx)
+do_test(vertoEvCtx *ctx)
 {
     pid_t pid = 0;
 

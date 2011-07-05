@@ -42,26 +42,26 @@
 #define vnew(type) ((type*) malloc(sizeof(type)))
 #define vnew0(type) ((type*) memset(vnew(type), 0, sizeof(type)))
 
-struct vertoEvCtx {
+struct _vertoEvCtx {
     void *dll;
     void *modpriv;
-    struct vertoEvCtxFuncs funcs;
-    struct vertoEv *events;
+    vertoEvCtxFuncs funcs;
+    vertoEv *events;
 };
 
-struct vertoChild {
+typedef struct {
     pid_t pid;
     int   status;
-};
+} vertoChild;
 
-struct vertoEv {
-    struct vertoEv *next;
-    struct vertoEvCtx *ctx;
-    enum vertoEvType type;
+struct _vertoEv {
+    vertoEv *next;
+    vertoEvCtx *ctx;
+    vertoEvType type;
     vertoCallback *callback;
     void *priv;
     void *modpriv;
-    enum vertoEvFlag flags;
+    vertoEvFlag flags;
     bool persists;
     size_t depth;
     bool deleted;
@@ -69,15 +69,15 @@ struct vertoEv {
         int fd;
         int signal;
         time_t interval;
-        struct vertoChild child;
+        vertoChild child;
     } option;
 };
 
-const struct vertoModule *defmodule;
+const vertoModule *defmodule;
 
 static inline bool
 do_load_file(const char *filename, bool reqsym, void **dll,
-             const struct vertoModule **module)
+             const vertoModule **module)
 {
     *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
     if (!dll) {
@@ -85,7 +85,7 @@ do_load_file(const char *filename, bool reqsym, void **dll,
         return false;
     }
 
-    *module = (struct vertoModule*) dlsym(*dll, __str(VERTO_MODULE_TABLE));
+    *module = (vertoModule*) dlsym(*dll, __str(VERTO_MODULE_TABLE));
     if (!*module || (*module)->vers != VERTO_MODULE_VERSION
             || !(*module)->new_ctx || !(*module)->def_ctx)
         goto error;
@@ -110,7 +110,7 @@ do_load_file(const char *filename, bool reqsym, void **dll,
 
 static inline bool
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            bool reqsym, void **dll, const struct vertoModule **module)
+            bool reqsym, void **dll, const vertoModule **module)
 {
     *module = NULL;
     DIR *dir = opendir(dirname);
@@ -145,7 +145,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
 }
 
 static bool
-load_module(const char *impl, void **dll, const struct vertoModule **module)
+load_module(const char *impl, void **dll, const vertoModule **module)
 {
     bool success = false;
     Dl_info dlinfo;
@@ -217,18 +217,18 @@ load_module(const char *impl, void **dll, const struct vertoModule **module)
     return success;
 }
 
-static inline struct vertoEv *
-make_ev(struct vertoEvCtx *ctx, vertoCallback *callback, void *priv,
-        enum vertoEvType type, enum vertoEvFlag flags)
+static inline vertoEv *
+make_ev(vertoEvCtx *ctx, vertoCallback *callback, void *priv,
+        vertoEvType type, vertoEvFlag flags)
 {
-    struct vertoEv *ev = NULL;
+    vertoEv *ev = NULL;
 
     if (!ctx || !callback)
         return NULL;
 
-    ev = malloc(sizeof(struct vertoEv));
+    ev = malloc(sizeof(vertoEv));
     if (ev) {
-        memset(ev, 0, sizeof(struct vertoEv));
+        memset(ev, 0, sizeof(vertoEv));
         ev->ctx        = ctx;
         ev->type       = type;
         ev->callback   = callback;
@@ -240,18 +240,18 @@ make_ev(struct vertoEvCtx *ctx, vertoCallback *callback, void *priv,
 }
 
 static inline void
-push_ev(struct vertoEvCtx *ctx, struct vertoEv *ev)
+push_ev(vertoEvCtx *ctx, vertoEv *ev)
 {
     if (!ctx || !ev)
         return;
 
-    struct vertoEv *tmp = ctx->events;
+    vertoEv *tmp = ctx->events;
     ctx->events = ev;
     ctx->events->next = tmp;
 }
 
 static void
-remove_ev(struct vertoEv **origin, struct vertoEv *item)
+remove_ev(vertoEv **origin, vertoEv *item)
 {
     if (!origin || !*origin || !item)
         return;
@@ -263,16 +263,16 @@ remove_ev(struct vertoEv **origin, struct vertoEv *item)
 }
 
 static void
-signal_ignore(struct vertoEvCtx *ctx, struct vertoEv *ev)
+signal_ignore(vertoEvCtx *ctx, vertoEv *ev)
 {
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_new(const char *impl)
 {
     void *dll = NULL;
-    const struct vertoModule *module = NULL;
-    struct vertoEvCtx *ctx = NULL;
+    const vertoModule *module = NULL;
+    vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
@@ -286,12 +286,12 @@ verto_new(const char *impl)
     return ctx;
 }
 
-struct vertoEvCtx *
+vertoEvCtx *
 verto_default(const char *impl)
 {
     void *dll = NULL;
-    const struct vertoModule *module = NULL;
-    struct vertoEvCtx *ctx = NULL;
+    const vertoModule *module = NULL;
+    vertoEvCtx *ctx = NULL;
 
     if (!load_module(impl, &dll, &module))
         return NULL;
@@ -313,7 +313,7 @@ verto_set_default(const char *impl)
 }
 
 void
-verto_free(struct vertoEvCtx *ctx)
+verto_free(vertoEvCtx *ctx)
 {
     int i;
     sigset_t old;
@@ -363,7 +363,7 @@ verto_free(struct vertoEvCtx *ctx)
 }
 
 void
-verto_run(struct vertoEvCtx *ctx)
+verto_run(vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
@@ -371,7 +371,7 @@ verto_run(struct vertoEvCtx *ctx)
 }
 
 void
-verto_run_once(struct vertoEvCtx *ctx)
+verto_run_once(vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
@@ -379,7 +379,7 @@ verto_run_once(struct vertoEvCtx *ctx)
 }
 
 void
-verto_break(struct vertoEvCtx *ctx)
+verto_break(vertoEvCtx *ctx)
 {
     if (!ctx)
         return;
@@ -387,7 +387,7 @@ verto_break(struct vertoEvCtx *ctx)
 }
 
 #define doadd(set, type) \
-    struct vertoEv *ev = make_ev(ctx, callback, priv, type, flags); \
+    vertoEv *ev = make_ev(ctx, callback, priv, type, flags); \
     if (ev) { \
         set; \
         ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev, &ev->persists); \
@@ -399,8 +399,8 @@ verto_break(struct vertoEvCtx *ctx)
     } \
     return ev;
 
-struct vertoEv *
-verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_io(vertoEvCtx *ctx, vertoEvFlag flags,
              vertoCallback *callback, void *priv, int fd)
 {
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
@@ -408,22 +408,22 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
     doadd(ev->option.fd = fd, VERTO_EV_TYPE_IO);
 }
 
-struct vertoEv *
-verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_timeout(vertoEvCtx *ctx, vertoEvFlag flags,
                   vertoCallback *callback, void *priv, time_t interval)
 {
     doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
-struct vertoEv *
-verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_idle(vertoEvCtx *ctx, vertoEvFlag flags,
                vertoCallback *callback, void *priv)
 {
     doadd(, VERTO_EV_TYPE_IDLE);
 }
 
-struct vertoEv *
-verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_signal(vertoEvCtx *ctx, vertoEvFlag flags,
                  vertoCallback *callback, void *priv, int signal)
 {
     if (signal < 0 || signal == SIGCHLD)
@@ -433,8 +433,8 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
     doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
 
-struct vertoEv *
-verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_child(vertoEvCtx *ctx, vertoEvFlag flags,
                 vertoCallback *callback, void *priv, pid_t pid)
 {
     if (pid < 1 || (flags & VERTO_EV_FLAG_PERSIST)) /* persist makes no sense */
@@ -443,25 +443,25 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
 }
 
 void *
-verto_get_private(const struct vertoEv *ev)
+verto_get_private(const vertoEv *ev)
 {
     return ev->priv;
 }
 
-enum vertoEvType
-verto_get_type(const struct vertoEv *ev)
+vertoEvType
+verto_get_type(const vertoEv *ev)
 {
     return ev->type;
 }
 
-enum vertoEvFlag
-verto_get_flags(const struct vertoEv *ev)
+vertoEvFlag
+verto_get_flags(const vertoEv *ev)
 {
     return ev->flags;
 }
 
 int
-verto_get_fd(const struct vertoEv *ev)
+verto_get_fd(const vertoEv *ev)
 {
     if (ev && (ev->type == VERTO_EV_TYPE_IO))
         return ev->option.fd;
@@ -469,7 +469,7 @@ verto_get_fd(const struct vertoEv *ev)
 }
 
 time_t
-verto_get_interval(const struct vertoEv *ev)
+verto_get_interval(const vertoEv *ev)
 {
     if (ev && (ev->type == VERTO_EV_TYPE_TIMEOUT))
         return ev->option.interval;
@@ -477,7 +477,7 @@ verto_get_interval(const struct vertoEv *ev)
 }
 
 int
-verto_get_signal(const struct vertoEv *ev)
+verto_get_signal(const vertoEv *ev)
 {
     if (ev && (ev->type == VERTO_EV_TYPE_SIGNAL))
         return ev->option.signal;
@@ -485,20 +485,20 @@ verto_get_signal(const struct vertoEv *ev)
 }
 
 pid_t
-verto_get_pid(const struct vertoEv *ev) {
+verto_get_pid(const vertoEv *ev) {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
         return ev->option.child.pid;
     return 0;
 }
 
 int
-verto_get_pid_status(const struct vertoEv *ev)
+verto_get_pid_status(const vertoEv *ev)
 {
     return ev->option.child.status;
 }
 
 void
-verto_del(struct vertoEv *ev)
+verto_del(vertoEv *ev)
 {
     if (!ev)
         return;
@@ -519,17 +519,17 @@ verto_del(struct vertoEv *ev)
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
-struct vertoEvCtx *
-verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
-               const struct vertoModule *module,
+vertoEvCtx *
+verto_convert_funcs(const vertoEvCtxFuncs *funcs,
+               const vertoModule *module,
                void *ctx_private)
 {
-    struct vertoEvCtx *ctx = NULL;
+    vertoEvCtx *ctx = NULL;
 
     if (!funcs || !module || !ctx_private)
         return NULL;
 
-    ctx = vnew0(struct vertoEvCtx);
+    ctx = vnew0(vertoEvCtx);
     if (!ctx)
         return NULL;
 
@@ -543,7 +543,7 @@ verto_convert_funcs(const struct vertoEvCtxFuncs *funcs,
 }
 
 void
-verto_fire(struct vertoEv *ev)
+verto_fire(vertoEv *ev)
 {
     void *priv;
 
@@ -564,7 +564,7 @@ verto_fire(struct vertoEv *ev)
 }
 
 void
-verto_set_pid_status(struct vertoEv *ev, int status)
+verto_set_pid_status(vertoEv *ev, int status)
 {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
         ev->option.child.status = status;

@@ -33,7 +33,7 @@
 static int exitstatus;
 
 void
-exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+exit_cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     if (WEXITSTATUS(exitstatus) != EXITCODE) {
         printf("ERROR: Child event never fired!\n");
@@ -44,13 +44,13 @@ exit_cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
 }
 
 void
-cb(struct vertoEvCtx *ctx, struct vertoEv *ev)
+cb(vertoEvCtx *ctx, vertoEv *ev)
 {
     exitstatus = verto_get_pid_status(ev);
 }
 
 int
-do_test(struct vertoEvCtx *ctx)
+do_test(vertoEvCtx *ctx)
 {
     pid_t pid;
 

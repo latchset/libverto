@@ -30,18 +30,18 @@
 
 #define VERTO_SIG_IGN ((vertoCallback *) 1)
 
-struct vertoEvCtx;
-struct vertoEv;
+typedef struct _vertoEvCtx vertoEvCtx;
+typedef struct _vertoEv vertoEv;
 
-enum vertoEvType {
+typedef enum {
     VERTO_EV_TYPE_IO,
     VERTO_EV_TYPE_TIMEOUT,
     VERTO_EV_TYPE_IDLE,
     VERTO_EV_TYPE_SIGNAL,
     VERTO_EV_TYPE_CHILD
-};
+} vertoEvType;
 
-enum vertoEvFlag {
+typedef enum {
     VERTO_EV_FLAG_NONE = 0,
     VERTO_EV_FLAG_PERSIST = 1,
     VERTO_EV_FLAG_PRIORITY_LOW = 1 << 1,
@@ -50,9 +50,9 @@ enum vertoEvFlag {
     VERTO_EV_FLAG_IO_READ = 1 << 4,
     VERTO_EV_FLAG_IO_WRITE = 1 << 5,
     _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_WRITE
-};
+} vertoEvFlag;
 
-typedef void (vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
+typedef void (vertoCallback)(vertoEvCtx *ctx, vertoEv *ev);
 
 /**
  * Creates a new event context using an optionally specified implementation.
@@ -102,7 +102,7 @@ typedef void (vertoCallback)(struct vertoEvCtx *ctx, struct vertoEv *ev);
  * @param impl The implementation to use, or NULL.
  * @return A new EvCtx, or NULL on error.  Call verto_free() when done.
  */
-struct vertoEvCtx *
+vertoEvCtx *
 verto_new(const char *impl);
 
 /**
@@ -123,7 +123,7 @@ verto_new(const char *impl);
  * @param impl The implementation to use, or NULL.
  * @return The default EvCtx, or NULL on error.  Call verto_free() when done.
  */
-struct vertoEvCtx *
+vertoEvCtx *
 verto_default(const char *impl);
 
 /**
@@ -160,7 +160,7 @@ verto_set_default(const char *impl);
  * @param ctx The vertoEvCtx to free.
  */
 void
-verto_free(struct vertoEvCtx *ctx);
+verto_free(vertoEvCtx *ctx);
 
 /**
  * Run the vertoEvCtx forever, or at least until verto_break() is called.
@@ -169,7 +169,7 @@ verto_free(struct vertoEvCtx *ctx);
  * @param ctx The vertoEvCtx to run.
  */
 void
-verto_run(struct vertoEvCtx *ctx);
+verto_run(vertoEvCtx *ctx);
 
 /**
  * Run the vertoEvCtx once. May block.
@@ -177,7 +177,7 @@ verto_run(struct vertoEvCtx *ctx);
  * @param ctx The vertoEvCtx to run once.
  */
 void
-verto_run_once(struct vertoEvCtx *ctx);
+verto_run_once(vertoEvCtx *ctx);
 
 /**
  * Exits the currently running vertoEvCtx.
@@ -186,7 +186,7 @@ verto_run_once(struct vertoEvCtx *ctx);
  * @param ctx The vertoEvCtx to exit.
  */
 void
-verto_break(struct vertoEvCtx *ctx);
+verto_break(vertoEvCtx *ctx);
 
 /**
  * Adds a callback executed when a file descriptor is ready to be read/written.
@@ -206,8 +206,8 @@ verto_break(struct vertoEvCtx *ctx);
  * @param fd The file descriptor to watch for reads.
  * @return The vertoEv registered with the event context or NULL on error.
  */
-struct vertoEv *
-verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_io(vertoEvCtx *ctx, vertoEvFlag flags,
              vertoCallback *callback, void *priv, int fd);
 
 /**
@@ -228,8 +228,8 @@ verto_add_io(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @param interval Time period to wait before firing (in milliseconds).
  * @return The vertoEv registered with the event context.
  */
-struct vertoEv *
-verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_timeout(vertoEvCtx *ctx, vertoEvFlag flags,
                   vertoCallback *callback, void *priv, time_t interval);
 
 /**
@@ -249,8 +249,8 @@ verto_add_timeout(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @param priv Data which will be passed to the callback.
  * @return The vertoEv registered with the event context.
  */
-struct vertoEv *
-verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_idle(vertoEvCtx *ctx, vertoEvFlag flags,
                vertoCallback *callback, void *priv);
 
 /**
@@ -285,8 +285,8 @@ verto_add_idle(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @param signal The signal to watch for.
  * @return The vertoEv registered with the event context.
  */
-struct vertoEv *
-verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_signal(vertoEvCtx *ctx, vertoEvFlag flags,
                  vertoCallback *callback, void *priv, int signal);
 
 /**
@@ -306,8 +306,8 @@ verto_add_signal(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @param child The pid of the child to watch for.
  * @return The vertoEv registered with the event context.
  */
-struct vertoEv *
-verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
+vertoEv *
+verto_add_child(vertoEvCtx *ctx, vertoEvFlag flags,
                 vertoCallback *callback, void *priv, pid_t pid);
 
 /**
@@ -322,7 +322,7 @@ verto_add_child(struct vertoEvCtx *ctx, enum vertoEvFlag flags,
  * @return The vertoEv private pointer
  */
 void *
-verto_get_private(const struct vertoEv *ev);
+verto_get_private(const vertoEv *ev);
 
 /**
  * Gets the type of the vertoEv.
@@ -335,8 +335,8 @@ verto_get_private(const struct vertoEv *ev);
  * @param ev The vertoEv
  * @return The vertoEv type
  */
-enum vertoEvType
-verto_get_type(const struct vertoEv *ev);
+vertoEvType
+verto_get_type(const vertoEv *ev);
 
 /**
  * Gets the flags associated with the given vertoEv.
@@ -349,8 +349,8 @@ verto_get_type(const struct vertoEv *ev);
  * @param ev The vertoEv
  * @return The vertoEv type
  */
-enum vertoEvFlag
-verto_get_flags(const struct vertoEv *ev);
+vertoEvFlag
+verto_get_flags(const vertoEv *ev);
 
 /**
  * Gets the file descriptor associated with a read/write vertoEv.
@@ -360,7 +360,7 @@ verto_get_flags(const struct vertoEv *ev);
  * @return The file descriptor, or -1 if not a read/write event.
  */
 int
-verto_get_fd(const struct vertoEv *ev);
+verto_get_fd(const vertoEv *ev);
 
 /**
  * Gets the interval associated with a timeout vertoEv.
@@ -370,7 +370,7 @@ verto_get_fd(const struct vertoEv *ev);
  * @return The interval, or 0 if not a timeout event.
  */
 time_t
-verto_get_interval(const struct vertoEv *ev);
+verto_get_interval(const vertoEv *ev);
 
 /**
  * Gets the signal associated with a signal vertoEv.
@@ -380,7 +380,7 @@ verto_get_interval(const struct vertoEv *ev);
  * @return The signal, or -1 if not a signal event.
  */
 int
-verto_get_signal(const struct vertoEv *ev);
+verto_get_signal(const vertoEv *ev);
 
 /**
  * Gets the pid associated with a child vertoEv.
@@ -390,7 +390,7 @@ verto_get_signal(const struct vertoEv *ev);
  * @return The pid, or 0 if not a child event.
  */
 pid_t
-verto_get_pid(const struct vertoEv *ev);
+verto_get_pid(const vertoEv *ev);
 
 /**
  * Gets the status of the pid which caused this event to fire.
@@ -400,7 +400,7 @@ verto_get_pid(const struct vertoEv *ev);
  * @return The pid status.
  */
 int
-verto_get_pid_status(const struct vertoEv *ev);
+verto_get_pid_status(const vertoEv *ev);
 
 /**
  * Removes an event from from the event context and frees it.
@@ -415,6 +415,6 @@ verto_get_pid_status(const struct vertoEv *ev);
  * @param ev The event to delete.
  */
 void
-verto_del(struct vertoEv *ev);
+verto_del(vertoEv *ev);
 
 #endif /* VERTO_H_ */
