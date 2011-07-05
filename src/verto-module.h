@@ -34,7 +34,7 @@
 #define VERTO_MODULE_VERSION 1
 #define VERTO_MODULE_TABLE verto_module_table
 #define VERTO_MODULE(name, symb) \
-    static vertoEvCtxFuncs name ## _funcs = { \
+    static verto_ev_ctx_funcs name ## _funcs = { \
         name ## _ctx_free, \
         name ## _ctx_run, \
         name ## _ctx_run_once, \
@@ -42,7 +42,7 @@
         name ## _ctx_add, \
         name ## _ctx_del \
     }; \
-    vertoModule VERTO_MODULE_TABLE = { \
+    verto_module VERTO_MODULE_TABLE = { \
         VERTO_MODULE_VERSION, \
         # name, \
         # symb, \
@@ -50,27 +50,27 @@
         verto_default_ ## name, \
     };
 
-typedef vertoEvCtx *(*vertoEvCtxConstructor)();
+typedef verto_ev_ctx *(*verto_ev_ctx_constructor)();
 
 typedef struct {
     unsigned int vers;
     const char *name;
     const char *symb;
-    vertoEvCtxConstructor new_ctx;
-    vertoEvCtxConstructor def_ctx;
-} vertoModule;
+    verto_ev_ctx_constructor new_ctx;
+    verto_ev_ctx_constructor def_ctx;
+} verto_module;
 
 typedef struct {
     void  (*ctx_free)(void *ctx);
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    void *(*ctx_add)(void *ctx, const vertoEv *ev, bool *persists);
-    void  (*ctx_del)(void *ctx, const vertoEv *ev, void *evpriv);
-} vertoEvCtxFuncs;
+    void *(*ctx_add)(void *ctx, const verto_ev *ev, bool *persists);
+    void  (*ctx_del)(void *ctx, const verto_ev *ev, void *evpriv);
+} verto_ev_ctx_funcs;
 
 /**
- * Converts an existing implementation specific loop to a vertoEvCtx.
+ * Converts an existing implementation specific loop to a verto_ev_ctx.
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
@@ -78,13 +78,13 @@ typedef struct {
  *
  * @param name The name of the module (unquoted)
  * @param priv The context private to store
- * @return A new EvCtx, or NULL on error. Call verto_free() when done.
+ * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
  */
 #define verto_convert(name, priv) \
         verto_convert_funcs(&name ## _funcs, &VERTO_MODULE_TABLE, priv)
 
 /**
- * Converts an existing implementation specific loop to a vertoEvCtx.
+ * Converts an existing implementation specific loop to a verto_ev_ctx.
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
@@ -96,17 +96,17 @@ typedef struct {
  *
  * @param name The name of the module (unquoted)
  * @param priv The context private to store
- * @return A new EvCtx, or NULL on error. Call verto_free() when done.
+ * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
  */
-vertoEvCtx *
-verto_convert_funcs(const vertoEvCtxFuncs *funcs,
-                    const vertoModule *module,
+verto_ev_ctx *
+verto_convert_funcs(const verto_ev_ctx_funcs *funcs,
+                    const verto_module *module,
                     void *priv);
 
 /**
- * Calls the callback of the vertoEv and then frees it via verto_del().
+ * Calls the callback of the verto_ev and then frees it via verto_del().
  *
- * The vertoEv is not freed (verto_del() is not called) if it is a signal event.
+ * The verto_ev is not freed (verto_del() is not called) if it is a signal event.
  *
  * @see verto_add_read()
  * @see verto_add_write()
@@ -115,21 +115,21 @@ verto_convert_funcs(const vertoEvCtxFuncs *funcs,
  * @see verto_add_signal()
  * @see verto_add_child()
  * @see verto_del()
- * @param ev The vertoEv
+ * @param ev The verto_ev
  */
 void
-verto_fire(vertoEv *ev);
+verto_fire(verto_ev *ev);
 
 /**
  * Sets the status of the pid which caused this event to fire.
  *
- * This function does nothing if the vertoEv is not a child type.
+ * This function does nothing if the verto_ev is not a child type.
  *
  * @see verto_add_child()
- * @param ev The vertoEv to set the status in.
+ * @param ev The verto_ev to set the status in.
  * @param status The pid status.
  */
 void
-verto_set_pid_status(vertoEv *ev, int status);
+verto_set_pid_status(verto_ev *ev, int status);
 
 #endif /* VERTO_MODULE_H_ */

@@ -28,8 +28,8 @@
 #include <verto.h>
 #include <event2/event.h>
 
-vertoEvCtx *verto_new_libevent();
-vertoEvCtx *verto_default_libevent();
-vertoEvCtx *verto_convert_libevent(struct event_base *ebase);
+verto_ev_ctx *verto_new_libevent();
+verto_ev_ctx *verto_default_libevent();
+verto_ev_ctx *verto_convert_libevent(struct event_base *ebase);
 
 #endif /* VERTO_LIBEVENT_H_ */

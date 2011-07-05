@@ -51,14 +51,14 @@ elapsed(time_t min, time_t max)
 }
 
 static void
-exit_cb(vertoEvCtx *ctx, vertoEv *ev)
+exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     assert(callcount == 3);
     verto_break(ctx);
 }
 
 static void
-cb(vertoEvCtx *ctx, vertoEv *ev)
+cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     assert(elapsed(SLEEP, SLEEP*2));
     if (++callcount == 3)
@@ -70,7 +70,7 @@ cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 int
-do_test(vertoEvCtx *ctx)
+do_test(verto_ev_ctx *ctx)
 {
     callcount = 0;
 

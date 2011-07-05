@@ -27,22 +27,22 @@
 #include <verto-glib.h>
 #include <verto-module.h>
 
-struct glibEvCtx {
+typedef struct {
     GMainContext *context;
     GMainLoop *loop;
-};
+} glib_ev_ctx;
 
-struct glibEv {
+typedef struct {
     GSource *src;
     GIOChannel *chan;
-};
+} glib_ev;
 
 static void *
 glib_convert_(GMainContext *mc, GMainLoop *ml)
 {
-    struct glibEvCtx *l = NULL;
+    glib_ev_ctx *l = NULL;
 
-    l = g_new0(struct glibEvCtx, 1);
+    l = g_new0(glib_ev_ctx, 1);
     if (l) {
         if (mc) {
             /* Steal references */
@@ -66,27 +66,27 @@ glib_convert_(GMainContext *mc, GMainLoop *ml)
 static void
 glib_ctx_free(void *lp)
 {
-    g_main_loop_unref(((struct glibEvCtx*) lp)->loop);
-    g_main_context_unref(((struct glibEvCtx*) lp)->context);
+    g_main_loop_unref(((glib_ev_ctx*) lp)->loop);
+    g_main_context_unref(((glib_ev_ctx*) lp)->context);
     g_free(lp);
 }
 
 static void
 glib_ctx_run(void *lp)
 {
-    g_main_loop_run(((struct glibEvCtx*) lp)->loop);
+    g_main_loop_run(((glib_ev_ctx*) lp)->loop);
 }
 
 static void
 glib_ctx_run_once(void *lp)
 {
-    g_main_context_iteration(((struct glibEvCtx*) lp)->context, TRUE);
+    g_main_context_iteration(((glib_ev_ctx*) lp)->context, TRUE);
 }
 
 static void
 glib_ctx_break(void *lp)
 {
-    g_main_loop_quit(((struct glibEvCtx*) lp)->loop);
+    g_main_loop_quit(((glib_ev_ctx*) lp)->loop);
 }
 
 static gboolean
@@ -111,15 +111,15 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
+glib_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
 {
-    struct glibEv *gev = NULL;
-    vertoEvType type = verto_get_type(ev);
-    vertoEvFlag flags = verto_get_flags(ev);
+    glib_ev *gev = NULL;
+    verto_ev_type type = verto_get_type(ev);
+    verto_ev_flag flags = verto_get_flags(ev);
 
     *persists = flags & VERTO_EV_FLAG_PERSIST;
 
-    gev = g_new0(struct glibEv, 1);
+    gev = g_new0(glib_ev, 1);
     if (!gev)
         return NULL;
 
@@ -176,7 +176,7 @@ glib_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
         g_source_set_priority(gev->src, G_PRIORITY_LOW);
 
     g_source_set_can_recurse(gev->src, FALSE);
-    if (g_source_attach(gev->src, ((struct glibEvCtx*) ctx)->context) == 0)
+    if (g_source_attach(gev->src, ((glib_ev_ctx*) ctx)->context) == 0)
         goto error;
 
     return gev;
@@ -195,16 +195,16 @@ glib_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
 }
 
 static void
-glib_ctx_del(void *lp, const vertoEv *ev, void *evpriv)
+glib_ctx_del(void *lp, const verto_ev *ev, void *evpriv)
 {
     if (!ev)
         return;
 
-    if (((struct glibEv *) evpriv)->chan)
-        g_io_channel_unref(((struct glibEv *) evpriv)->chan);
-    if (((struct glibEv *) evpriv)->src) {
-        g_source_destroy(((struct glibEv *) evpriv)->src);
-        g_source_unref(((struct glibEv *) evpriv)->src);
+    if (((glib_ev *) evpriv)->chan)
+        g_io_channel_unref(((glib_ev *) evpriv)->chan);
+    if (((glib_ev *) evpriv)->src) {
+        g_source_destroy(((glib_ev *) evpriv)->src);
+        g_source_unref(((glib_ev *) evpriv)->src);
     }
 
     g_free(evpriv);
@@ -212,17 +212,17 @@ glib_ctx_del(void *lp, const vertoEv *ev, void *evpriv)
 
 VERTO_MODULE(glib, g_main_context_default);
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_new_glib() {
     return verto_convert_glib(g_main_context_new(), NULL);
 }
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_default_glib() {
     return verto_convert_glib(g_main_context_default(), NULL);
 }
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
     return verto_convert(glib, glib_convert_(mc, ml));

@@ -28,8 +28,8 @@
 #include <verto.h>
 #include <ev.h>
 
-vertoEvCtx *verto_new_libev();
-vertoEvCtx *verto_default_libev();
-vertoEvCtx *verto_convert_libev(struct ev_loop* loop);
+verto_ev_ctx *verto_new_libev();
+verto_ev_ctx *verto_default_libev();
+verto_ev_ctx *verto_convert_libev(struct ev_loop* loop);
 
 #endif /* VERTO_LIBEV_H_ */

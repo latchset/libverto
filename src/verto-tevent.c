@@ -29,15 +29,15 @@
 #include <verto-tevent.h>
 #include <verto-module.h>
 
-#define tctx(p) ((struct teventEvCtx *) p)->ctx
-#define texit(p) ((struct teventEvCtx *) p)->exit
+#define tctx(p) ((tevent_ev_ctx *) p)->ctx
+#define texit(p) ((tevent_ev_ctx *) p)->exit
 
 static struct tevent_context *defctx;
 
-struct teventEvCtx {
+typedef struct {
     struct tevent_context *ctx;
     bool exit;
-};
+} tevent_ev_ctx;
 
 static void
 tevent_ctx_free(void *priv)
@@ -78,7 +78,7 @@ definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
 static void *
-tevent_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
+tevent_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
 {
     time_t interval;
     struct timeval tv;
@@ -110,20 +110,20 @@ tevent_ctx_add(void *ctx, const vertoEv *ev, bool *persists)
 }
 
 static void
-tevent_ctx_del(void *priv, const vertoEv *ev, void *evpriv)
+tevent_ctx_del(void *priv, const verto_ev *ev, void *evpriv)
 {
     talloc_free(evpriv);
 }
 
 VERTO_MODULE(tevent, g_main_context_default);
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_new_tevent()
 {
     return verto_convert_tevent(tevent_context_init(NULL));
 }
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_default_tevent()
 {
     if (!defctx)
@@ -131,12 +131,12 @@ verto_default_tevent()
     return verto_convert_tevent(defctx);
 }
 
-vertoEvCtx *
+verto_ev_ctx *
 verto_convert_tevent(struct tevent_context *context)
 {
-    struct teventEvCtx *ctx;
+    tevent_ev_ctx *ctx;
 
-    ctx = talloc_zero(NULL, struct teventEvCtx);
+    ctx = talloc_zero(NULL, tevent_ev_ctx);
     if (ctx) {
         talloc_set_name_const(ctx, "libverto");
         ctx->ctx = context;

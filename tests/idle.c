@@ -25,10 +25,10 @@
 #include "test.h"
 
 static int callcount;
-vertoEv *idle = NULL;
+verto_ev *idle = NULL;
 
 void
-exit_cb(vertoEvCtx *ctx, vertoEv *ev)
+exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     retval = 1;
     switch (callcount) {
@@ -54,7 +54,7 @@ exit_cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 void
-cb(vertoEvCtx *ctx, vertoEv *ev)
+cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     if (++callcount == 2) {
         verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb, NULL);
@@ -63,7 +63,7 @@ cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 int
-do_test(vertoEvCtx *ctx)
+do_test(verto_ev_ctx *ctx)
 {
     callcount = 0;
     idle = verto_add_idle(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL);

@@ -39,7 +39,7 @@ static int fds[2];
 static int callcount = 0;
 
 static void
-timeout_cb(vertoEvCtx *ctx, vertoEv *ev)
+timeout_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     printf("ERROR: Timeout!\n");
     if (fds[0] >= 0)
@@ -52,7 +52,7 @@ timeout_cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 static void
-error_cb(vertoEvCtx *ctx, vertoEv *ev)
+error_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     int fd = 0;
 
@@ -65,7 +65,7 @@ error_cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 static void
-read_cb(vertoEvCtx *ctx, vertoEv *ev)
+read_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     unsigned char buff[DATALEN];
     int fd = verto_get_fd(ev);
@@ -78,7 +78,7 @@ read_cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 static void
-write_cb(vertoEvCtx *ctx, vertoEv *ev)
+write_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     int fd = 0;
 
@@ -89,7 +89,7 @@ write_cb(vertoEvCtx *ctx, vertoEv *ev)
 }
 
 int
-do_test(vertoEvCtx *ctx)
+do_test(verto_ev_ctx *ctx)
 {
     callcount = 0;
     fds[0] = -1;

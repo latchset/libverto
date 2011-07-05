@@ -28,8 +28,8 @@
 #include <verto.h>
 #include <tevent.h>
 
-vertoEvCtx *verto_new_tevent();
-vertoEvCtx *verto_default_tevent();
-vertoEvCtx *verto_convert_tevent(struct tevent_context *context);
+verto_ev_ctx *verto_new_tevent();
+verto_ev_ctx *verto_default_tevent();
+verto_ev_ctx *verto_convert_tevent(struct tevent_context *context);
 
 #endif /* VERTO_TEVENT_H_ */
