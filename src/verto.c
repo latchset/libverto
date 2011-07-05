@@ -75,7 +75,7 @@ struct _verto_ev {
 
 const verto_module *defmodule;
 
-static inline bool
+static bool
 do_load_file(const char *filename, bool reqsym, void **dll,
              const verto_module **module)
 {
@@ -108,7 +108,7 @@ do_load_file(const char *filename, bool reqsym, void **dll,
         return false;
 }
 
-static inline bool
+static bool
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
             bool reqsym, void **dll, const verto_module **module)
 {
@@ -217,7 +217,7 @@ load_module(const char *impl, void **dll, const verto_module **module)
     return success;
 }
 
-static inline verto_ev *
+static verto_ev *
 make_ev(verto_ev_ctx *ctx, verto_callback *callback, void *priv,
         verto_ev_type type, verto_ev_flag flags)
 {
@@ -239,7 +239,7 @@ make_ev(verto_ev_ctx *ctx, verto_callback *callback, void *priv,
     return ev;
 }
 
-static inline void
+static void
 push_ev(verto_ev_ctx *ctx, verto_ev *ev)
 {
     if (!ctx || !ev)
