@@ -32,7 +32,7 @@
 static int callcount;
 struct timeval starttime;
 
-static bool
+static char
 elapsed(time_t min, time_t max)
 {
     struct timeval tv;
@@ -45,9 +45,9 @@ elapsed(time_t min, time_t max)
     assert(gettimeofday(&starttime, NULL) == 0);
     if (diff < M2U(min) || diff > M2U(max)) {
         printf("ERROR: Timeout is out-of-bounds!\n");
-        return false;
+        return 0;
     }
-    return true;
+    return 1;
 }
 
 static void

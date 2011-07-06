@@ -68,7 +68,7 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
 }
 
 static void *
-libevent_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
+libevent_ctx_add(void *ctx, const verto_ev *ev, char *persists)
 {
     struct event *priv = NULL;
     struct timeval *timeout = NULL;

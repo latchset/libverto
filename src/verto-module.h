@@ -27,8 +27,6 @@
 #ifndef VERTO_MODULE_H_
 #define VERTO_MODULE_H_
 
-#include <stdbool.h>
-
 #include <verto.h>
 
 #define VERTO_MODULE_VERSION 1
@@ -65,7 +63,7 @@ typedef struct {
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    void *(*ctx_add)(void *ctx, const verto_ev *ev, bool *persists);
+    void *(*ctx_add)(void *ctx, const verto_ev *ev, char *persists);
     void  (*ctx_del)(void *ctx, const verto_ev *ev, void *evpriv);
 } verto_ev_ctx_funcs;
 

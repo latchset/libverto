@@ -111,7 +111,7 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
+glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
 {
     glib_ev *gev = NULL;
     verto_ev_type type = verto_get_type(ev);
@@ -145,7 +145,7 @@ glib_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
             break;
         case VERTO_EV_TYPE_CHILD:
             gev->src = g_child_watch_source_new(verto_get_pid(ev));
-            *persists = false;
+            *persists = FALSE;
             break;
         case VERTO_EV_TYPE_SIGNAL:
 #if GLIB_MAJOR_VERSION >= 2

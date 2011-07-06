@@ -37,6 +37,10 @@
 
 #include <verto-module.h>
 
+typedef char bool;
+#define true ((bool) 1)
+#define false ((bool) 0)
+
 #define  _str(s) # s
 #define __str(s) _str(s)
 #define vnew(type) ((type*) malloc(sizeof(type)))
@@ -154,15 +158,15 @@ load_module(const char *impl, void **dll, const verto_module **module)
     char *tmp = NULL;
 
     if (!dladdr(verto_convert_funcs, &dlinfo))
-        return NULL;
+        return false;
 
     suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
     if (!suffix)
-        return NULL;
+        return false;
 
     prefix = strndup(dlinfo.dli_fname, suffix - dlinfo.dli_fname + 1);
     if (!prefix)
-        return NULL;
+        return false;
     prefix[strlen(prefix) - 1] = '-'; /* Ex: /usr/lib/libverto- */
 
     if (impl) {

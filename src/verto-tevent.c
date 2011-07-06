@@ -36,7 +36,7 @@ static struct tevent_context *defctx;
 
 typedef struct {
     struct tevent_context *ctx;
-    bool exit;
+    char exit;
 } tevent_ev_ctx;
 
 static void
@@ -51,7 +51,7 @@ tevent_ctx_run(void *priv)
 {
     while (!texit(priv))
         tevent_loop_once(tctx(priv));
-    texit(priv) = false;
+    texit(priv) = 0;
 }
 
 static void
@@ -63,7 +63,7 @@ tevent_ctx_run_once(void *priv)
 static void
 tevent_ctx_break(void *priv)
 {
-    texit(priv) = true;
+    texit(priv) = 1;
 }
 
 #define definecb(type, ...) \
@@ -78,13 +78,13 @@ definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
 static void *
-tevent_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
+tevent_ctx_add(void *ctx, const verto_ev *ev, char *persists)
 {
     time_t interval;
     struct timeval tv;
     uint16_t flags = 0;
 
-    *persists = true;
+    *persists = 1;
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
         if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
@@ -94,7 +94,7 @@ tevent_ctx_add(void *ctx, const verto_ev *ev, bool *persists)
         return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
                              flags, tevent_fd_cb, (void *) ev);
     case VERTO_EV_TYPE_TIMEOUT:
-        *persists = false;
+        *persists = 0;
         interval = verto_get_interval(ev);
         tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
         return tevent_add_timer(tctx(ctx), tctx(ctx), tv,
@@ -140,7 +140,7 @@ verto_convert_tevent(struct tevent_context *context)
     if (ctx) {
         talloc_set_name_const(ctx, "libverto");
         ctx->ctx = context;
-        ctx->exit = false;
+        ctx->exit = 0;
         if (ctx->ctx != defctx)
             talloc_steal(ctx, ctx->ctx);
     }
