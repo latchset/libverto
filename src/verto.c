@@ -41,6 +41,10 @@ typedef char bool;
 #define true ((bool) 1)
 #define false ((bool) 0)
 
+#ifndef _NSIG
+#define _NSIG SIGRTMIN
+#endif
+
 #define  _str(s) # s
 #define __str(s) _str(s)
 #define vnew(type) ((type*) malloc(sizeof(type)))
