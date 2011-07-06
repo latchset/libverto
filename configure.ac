@@ -18,6 +18,8 @@ m4_ifdef([AM_SILENT_RULES], [
   AC_SUBST(AM_DEFAULT_VERBOSITY)
 ])
 
+AC_CHECK_LIB([dl],[dlopen])
+
 PKG_CHECK_MODULES(glib, glib-2.0, have_glib=yes, have_glib=no)
 AC_ARG_WITH(glib,
             [AS_HELP_STRING([--without-glib],
