@@ -60,7 +60,7 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 static void
 cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
-    assert(elapsed(SLEEP, SLEEP*2));
+    assert(elapsed(SLEEP, SLEEP*4));
     if (++callcount == 3)
         assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, SLEEP*2));
     else if (callcount == 2) {
