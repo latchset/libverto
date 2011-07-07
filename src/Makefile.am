@@ -4,7 +4,7 @@ include_HEADERS      = verto.h verto-module.h
 lib_LTLIBRARIES      = libverto.la
 
 libverto_la_SOURCES  = verto.c verto.h
-libverto_la_CFLAGS   = $(AM_CFLAGS) -Wall -DMODSUFFIX='".so"'
+libverto_la_CFLAGS   = $(AM_CFLAGS) -Wall
 libverto_la_LDFLAGS  = $(AM_LDFLAGS) $(dl_LIBS)
 
 # glib

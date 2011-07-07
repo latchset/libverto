@@ -33,13 +33,153 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
+
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 
 #include <verto-module.h>
 
 typedef char bool;
 #define true ((bool) 1)
 #define false ((bool) 0)
+
+#ifdef WIN32
+static char *
+strndup(const char *str, size_t len)
+{
+    char *tmp;
+    if (!str)
+        return NULL;
+    tmp = malloc(len+1);
+    if (tmp) {
+        memset(tmp, 0, len+1);
+        strncpy(tmp, str, len);
+    }
+    return tmp;
+}
+
+static int
+vasprintf(char **strp, const char *fmt, va_list ap) {
+    va_list apc;
+    int size = 0;
+
+    va_copy(apc, ap);
+    size = vsnprintf(NULL, 0, fmt, apc);
+    va_end(apc);
+
+    *strp = malloc(size + 1);
+    if (!size)
+        return -1;
+
+    return vsnprintf(*strp, size + 1, fmt, ap);
+}
+
+static int
+asprintf(char **strp, const char *fmt, ...) {
+    va_list ap;
+    int size = 0;
+
+    va_start(ap, fmt);
+    size = vasprintf(strp, fmt, ap);
+    va_end(ap);
+    return size;
+}
+
+#endif
+
+#ifdef WIN32
+#define pdlmsuffix ".dll"
+#define pdlmtype HMODULE
+#define pdlopenl(filename) LoadLibraryEx(filename, NULL, DONT_RESOLVE_DLL_REFERENCES)
+#define pdlclose(module) FreeLibrary((pdlmtype) module)
+#define pdlsym(mod, sym) ((void *) GetProcAddress(mod, sym))
+
+static pdlmtype
+pdlreopen(const char *filename, pdlmtype module)
+{
+    pdlclose(module);
+    return LoadLibrary(filename);
+}
+
+static char *pdlerror() {
+    char *amsg;
+    LPTSTR msg;
+
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER
+                      | FORMAT_MESSAGE_FROM_SYSTEM
+                      | FORMAT_MESSAGE_IGNORE_INSERTS,
+                  NULL, GetLastError(),
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPTSTR) &msg, 0, NULL);
+    amsg = strdup((const char*) msg);
+    LocalFree(msg);
+    return amsg;
+}
+
+static bool
+pdlsymlinked(const char *modn, const char *symb) {
+    return (GetProcAddress(GetModuleHandle(modn), symb) != NULL ||
+            GetProcAddress(GetModuleHandle(NULL), symb) != NULL);
+}
+
+static bool
+pdladdrmodname(void *addr, char **buf) {
+    MEMORY_BASIC_INFORMATION info;
+    HMODULE mod;
+    char modname[MAX_PATH];
+
+    if (!VirtualQuery(addr, &info, sizeof(info)))
+        return false;
+    mod = (HMODULE) info.AllocationBase;
+
+    if (!GetModuleFileNameA(mod, modname, MAX_PATH))
+        return false;
+
+    if (buf) {
+        *buf = strdup(modname);
+        if (!buf)
+            return false;
+    }
+
+    return true;
+}
+#else
+#define pdlmsuffix ".so"
+#define pdlmtype void *
+#define pdlopenl(filename) dlopen(filename, RTLD_LAZY | RTLD_LOCAL)
+#define pdlclose(module) dlclose((pdlmtype) module)
+#define pdlreopen(filename, module) module
+#define pdlsym(mod, sym) dlsym(mod, sym)
+#define pdlerror() strdup(dlerror())
+
+static bool
+pdlsymlinked(const char* modn, const char* symb)
+{
+    void* mod = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL);
+    if (mod) {
+        void* sym = dlsym(mod, symb);
+        dlclose(mod);
+        return sym != NULL;
+    }
+    return false;
+}
+
+static bool
+pdladdrmodname(void *addr, char **buf) {
+    Dl_info dlinfo;
+    if (!dladdr(addr, &dlinfo))
+        return false;
+    if (buf) {
+        *buf = strdup(dlinfo.dli_fname);
+        if (!*buf)
+            return false;
+    }
+    return true;
+}
+#endif
 
 #ifndef _NSIG
 #define _NSIG SIGRTMIN
@@ -84,41 +224,44 @@ struct _verto_ev {
 const verto_module *defmodule;
 
 static bool
-do_load_file(const char *filename, bool reqsym, void **dll,
+do_load_file(const char *filename, bool reqsym, pdlmtype *dll,
              const verto_module **module)
 {
-    *dll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
-    if (!dll) {
-        /* printf("%s -- %s\n", filename, dlerror()); */
+    *dll = pdlopenl(filename);
+    if (!*dll) {
+        /* printf("%s -- %s\n", filename, pdlerror()); */
         return false;
     }
 
-    *module = (verto_module*) dlsym(*dll, __str(VERTO_MODULE_TABLE));
+    *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
     if (!*module || (*module)->vers != VERTO_MODULE_VERSION
             || !(*module)->new_ctx || !(*module)->def_ctx)
         goto error;
 
     /* Check to make sure that we have our required symbol if reqsym == true */
-    if ((*module)->symb && reqsym) {
-        void *tmp = dlopen(NULL, 0);
-        if (!tmp || !dlsym(tmp, (*module)->symb)) {
-            if (tmp)
-                dlclose(tmp);
-            goto error;
-        }
-        dlclose(tmp);
-    }
+    if ((*module)->symb && reqsym && !pdlsymlinked(NULL, (*module)->symb))
+        goto error;
+
+    /* Re-open in execution mode */
+    *dll = pdlreopen(filename, *dll);
+    if (!*dll)
+        return false;
+
+    /* Get the module struct again */
+    *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
+    if (!*module)
+        goto error;
 
     return true;
 
     error:
-        dlclose(dll);
+        pdlclose(dll);
         return false;
 }
 
 static bool
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            bool reqsym, void **dll, const verto_module **module)
+            bool reqsym, pdlmtype *dll, const verto_module **module)
 {
     *module = NULL;
     DIR *dir = opendir(dirname);
@@ -153,24 +296,28 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
 }
 
 static bool
-load_module(const char *impl, void **dll, const verto_module **module)
+load_module(const char *impl, pdlmtype *dll, const verto_module **module)
 {
     bool success = false;
-    Dl_info dlinfo;
+    char *modname;
     char *prefix = NULL;
     char *suffix = NULL;
     char *tmp = NULL;
 
-    if (!dladdr(verto_convert_funcs, &dlinfo))
+    if (!pdladdrmodname(verto_convert_funcs, &modname))
         return false;
 
-    suffix = strstr(dlinfo.dli_fname, MODSUFFIX);
-    if (!suffix)
+    suffix = strstr(modname, pdlmsuffix);
+    if (!suffix) {
+        free(modname);
         return false;
+    }
 
-    prefix = strndup(dlinfo.dli_fname, suffix - dlinfo.dli_fname + 1);
-    if (!prefix)
+    prefix = strndup(modname, suffix - modname + 1);
+    if (!prefix) {
+        free(modname);
         return false;
+    }
     prefix[strlen(prefix) - 1] = '-'; /* Ex: /usr/lib/libverto- */
 
     if (impl) {
@@ -278,7 +425,7 @@ signal_ignore(verto_ev_ctx *ctx, verto_ev *ev)
 verto_ev_ctx *
 verto_new(const char *impl)
 {
-    void *dll = NULL;
+    pdlmtype dll = NULL;
     const verto_module *module = NULL;
     verto_ev_ctx *ctx = NULL;
 
@@ -287,7 +434,7 @@ verto_new(const char *impl)
 
     ctx = module->new_ctx();
     if (!ctx && dll)
-        dlclose(dll);
+        pdlclose(dll);
     if (ctx && defmodule != module)
         ctx->dll = dll;
 
@@ -297,7 +444,7 @@ verto_new(const char *impl)
 verto_ev_ctx *
 verto_default(const char *impl)
 {
-    void *dll = NULL;
+    pdlmtype dll = NULL;
     const verto_module *module = NULL;
     verto_ev_ctx *ctx = NULL;
 
@@ -306,7 +453,7 @@ verto_default(const char *impl)
 
     ctx = module->def_ctx();
     if (!ctx && dll)
-        dlclose(dll);
+        pdlclose(dll);
     if (ctx && defmodule != module)
         ctx->dll = dll;
 
@@ -316,18 +463,19 @@ verto_default(const char *impl)
 int
 verto_set_default(const char *impl)
 {
-    void *dll = NULL; /* we will leak the dll */
+    pdlmtype dll = NULL; /* we will leak the dll */
     return (!defmodule && impl && load_module(impl, &dll, &defmodule));
 }
 
 void
 verto_free(verto_ev_ctx *ctx)
 {
+#ifndef WIN32
     int i;
     sigset_t old;
     sigset_t block;
     struct sigaction act;
-    Dl_info info;
+#endif
 
     if (!ctx)
         return;
@@ -349,22 +497,26 @@ verto_free(verto_ev_ctx *ctx)
          * could be a race condition. So we mask out all signals during this
          * process.
          */
+#ifndef WIN32
         sigfillset(&block);
         sigprocmask(SIG_SETMASK, &block, &old);
-        dlclose(ctx->dll);
+#endif
+        pdlclose(ctx->dll);
+#ifndef WIN32
         for (i=1 ; i < _NSIG ; i++) {
             if (sigaction(i, NULL, &act) == 0) {
                 if (act.sa_flags & SA_SIGINFO) {
-                    if (dladdr(act.sa_sigaction, &info) == 0)
+                    if (!pdladdrmodname(act.sa_sigaction, NULL))
                         signal(i, SIG_DFL);
                 } else if (act.sa_handler != SIG_DFL
-                        && act.sa_handler != SIG_IGN
-                        && dladdr(act.sa_handler, &info) == 0) {
-                    signal(i, SIG_DFL);
+                        && act.sa_handler != SIG_IGN) {
+                    if (!pdladdrmodname(act.sa_handler, NULL))
+                        signal(i, SIG_DFL);
                 }
             }
         }
         sigprocmask(SIG_SETMASK, &old, NULL);
+#endif
     }
 
     free(ctx);
@@ -434,8 +586,12 @@ verto_ev *
 verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
                  verto_callback *callback, void *priv, int signal)
 {
-    if (signal < 0 || signal == SIGCHLD)
+    if (signal < 0)
         return NULL;
+#ifndef WIN32
+    if (signal == SIGCHLD)
+        return NULL;
+#endif
     if (callback == VERTO_SIG_IGN)
         callback = signal_ignore;
     doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
