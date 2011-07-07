@@ -142,7 +142,7 @@ verto_convert_tevent(struct tevent_context *context)
         ctx->ctx = context;
         ctx->exit = 0;
         if (ctx->ctx != defctx)
-            talloc_steal(ctx, ctx->ctx);
+            (void) talloc_steal(ctx, ctx->ctx);
     }
 
     return verto_convert(tevent, ctx);
