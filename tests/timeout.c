@@ -26,7 +26,11 @@
 
 #include "test.h"
 
+/* The glib timer will subtract a perterbation of up to 10ms based on your
+ * DBUS session or HOSTNAME (see g_timeout_set_expiration). */
 #define SLEEP 10
+#define SLEEP_MIN (SLEEP-10)
+#define SLEEP_MAX (SLEEP*4)
 #define M2U(m) ((m) * 1000)
 
 static int callcount;
@@ -60,7 +64,7 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 static void
 cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
-    assert(elapsed(SLEEP, SLEEP*4));
+    assert(elapsed(SLEEP_MIN, SLEEP_MAX));
     if (++callcount == 3)
         assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, SLEEP*2));
     else if (callcount == 2) {
