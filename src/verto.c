@@ -29,6 +29,7 @@
 #include <string.h>
 #include <signal.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include <libgen.h>
 #include <sys/types.h>
@@ -45,50 +46,6 @@
 typedef char bool;
 #define true ((bool) 1)
 #define false ((bool) 0)
-
-#ifdef WIN32
-static char *
-strndup(const char *str, size_t len)
-{
-    char *tmp;
-    if (!str)
-        return NULL;
-    tmp = malloc(len+1);
-    if (tmp) {
-        memset(tmp, 0, len+1);
-        strncpy(tmp, str, len);
-    }
-    return tmp;
-}
-
-static int
-vasprintf(char **strp, const char *fmt, va_list ap) {
-    va_list apc;
-    int size = 0;
-
-    va_copy(apc, ap);
-    size = vsnprintf(NULL, 0, fmt, apc);
-    va_end(apc);
-
-    *strp = malloc(size + 1);
-    if (!size)
-        return -1;
-
-    return vsnprintf(*strp, size + 1, fmt, ap);
-}
-
-static int
-asprintf(char **strp, const char *fmt, ...) {
-    va_list ap;
-    int size = 0;
-
-    va_start(ap, fmt);
-    size = vasprintf(strp, fmt, ap);
-    va_end(ap);
-    return size;
-}
-
-#endif
 
 #ifdef WIN32
 #define pdlmsuffix ".dll"
@@ -223,6 +180,33 @@ struct _verto_ev {
 
 const verto_module *defmodule;
 
+static int
+_vasprintf(char **strp, const char *fmt, va_list ap) {
+    va_list apc;
+    int size = 0;
+
+    va_copy(apc, ap);
+    size = vsnprintf(NULL, 0, fmt, apc);
+    va_end(apc);
+
+    *strp = malloc(size + 1);
+    if (!size)
+        return -1;
+
+    return vsnprintf(*strp, size + 1, fmt, ap);
+}
+
+static int
+_asprintf(char **strp, const char *fmt, ...) {
+    va_list ap;
+    int size = 0;
+
+    va_start(ap, fmt);
+    size = _vasprintf(strp, fmt, ap);
+    va_end(ap);
+    return size;
+}
+
 static bool
 do_load_file(const char *filename, bool reqsym, pdlmtype *dll,
              const verto_module **module)
@@ -281,7 +265,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
             continue;
 
         char *tmp = NULL;
-        if (asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
+        if (_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
             continue;
 
         bool success = do_load_file(tmp, reqsym, dll, module);
@@ -299,26 +283,24 @@ static bool
 load_module(const char *impl, pdlmtype *dll, const verto_module **module)
 {
     bool success = false;
-    char *modname;
     char *prefix = NULL;
     char *suffix = NULL;
     char *tmp = NULL;
 
-    if (!pdladdrmodname(verto_convert_funcs, &modname))
+    if (!pdladdrmodname(verto_convert_funcs, &prefix))
         return false;
 
-    suffix = strstr(modname, pdlmsuffix);
-    if (!suffix) {
-        free(modname);
+    /* Example output:
+     *    prefix == /usr/lib/libverto-
+     *    impl == glib
+     *    suffix == .so.0
+     * Put them all together: /usr/lib/libverto-glib.so.0 */
+    suffix = strstr(prefix, pdlmsuffix);
+    if (!suffix || strlen(suffix) < 1 || !(suffix = strdup(suffix))) {
+        free(prefix);
         return false;
     }
-
-    prefix = strndup(modname, suffix - modname + 1);
-    if (!prefix) {
-        free(modname);
-        return false;
-    }
-    prefix[strlen(prefix) - 1] = '-'; /* Ex: /usr/lib/libverto- */
+    strcpy(prefix + strlen(prefix) - strlen(suffix), "-");
 
     if (impl) {
         /* Try to do a load by the path */
@@ -327,7 +309,7 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
         if (!success) {
             /* Try to do a load by the name */
             tmp = NULL;
-            if (asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
+            if (_asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
                 success = do_load_file(tmp, false, dll, module);
                 free(tmp);
             }
@@ -368,6 +350,7 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
         }
     }
 
+    free(suffix);
     free(prefix);
     return success;
 }
