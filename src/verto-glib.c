@@ -125,7 +125,11 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
 
     switch (type) {
         case VERTO_EV_TYPE_IO:
+#ifdef WIN32
+            gev->chan = g_io_channel_win32_new_socket(verto_get_fd(ev));
+#else
             gev->chan = g_io_channel_unix_new(verto_get_fd(ev));
+#endif
             if (!gev->chan)
                 goto error;
             g_io_channel_set_close_on_unref(gev->chan, FALSE);
@@ -150,8 +154,10 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
         case VERTO_EV_TYPE_SIGNAL:
 #if GLIB_MAJOR_VERSION >= 2
 #if GLIB_MINOR_VERSION >= 29
+#ifndef WIN32 /* Not supported on Windows */
             gev->src = g_unix_signal_source_new(verto_get_signal(ev));
             break;
+#endif
 #endif /* GLIB_MINOR_VERSION >= 29 */
 #endif /* GLIB_MAJOR_VERSION >= 2 */
         default:
