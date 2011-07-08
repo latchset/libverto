@@ -58,7 +58,7 @@ static void
 libev_callback(EV_P_ ev_watcher *w, int revents)
 {
     if (verto_get_type(w->data) == VERTO_EV_TYPE_CHILD)
-        verto_set_pid_status(w->data, ((ev_child*) w)->rstatus);
+        verto_set_proc_status(w->data, ((ev_child*) w)->rstatus);
 
     verto_fire(w->data);
 }
@@ -100,7 +100,7 @@ libev_ctx_add(void *ctx, const verto_ev *ev, char *persists)
             setuptype(signal, ev, libev_callback, verto_get_signal(ev));
         case VERTO_EV_TYPE_CHILD:
             *persists = 0;
-            setuptype(child, ev, libev_callback, verto_get_pid(ev), 0);
+            setuptype(child, ev, libev_callback, verto_get_proc(ev), 0);
         default:
             return NULL; /* Not supported */
     }

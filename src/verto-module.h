@@ -119,15 +119,15 @@ void
 verto_fire(verto_ev *ev);
 
 /**
- * Sets the status of the pid which caused this event to fire.
+ * Sets the status of the pid/handle which caused this event to fire.
  *
  * This function does nothing if the verto_ev is not a child type.
  *
  * @see verto_add_child()
  * @param ev The verto_ev to set the status in.
- * @param status The pid status.
+ * @param status The pid/handle status.
  */
 void
-verto_set_pid_status(verto_ev *ev, int status);
+verto_set_proc_status(verto_ev *ev, verto_proc_status status);
 
 #endif /* VERTO_MODULE_H_ */

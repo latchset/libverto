@@ -106,7 +106,7 @@ glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
 static void
 glib_callback_child(GPid pid, gint status, gpointer data)
 {
-    verto_set_pid_status(data, status);
+    verto_set_proc_status(data, status);
     verto_fire(data);
 }
 
@@ -144,7 +144,7 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
             gev->src = g_idle_source_new();
             break;
         case VERTO_EV_TYPE_CHILD:
-            gev->src = g_child_watch_source_new(verto_get_pid(ev));
+            gev->src = g_child_watch_source_new(verto_get_proc(ev));
             *persists = FALSE;
             break;
         case VERTO_EV_TYPE_SIGNAL:

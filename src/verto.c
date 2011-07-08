@@ -155,8 +155,8 @@ struct _verto_ev_ctx {
 };
 
 typedef struct {
-    pid_t pid;
-    int   status;
+    verto_proc proc;
+    verto_proc_status status;
 } verto_child;
 
 struct _verto_ev {
@@ -582,11 +582,17 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
 
 verto_ev *
 verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
-                verto_callback *callback, void *priv, pid_t pid)
+                verto_callback *callback, void *priv, verto_proc proc)
 {
-    if (pid < 1 || (flags & VERTO_EV_FLAG_PERSIST)) /* persist makes no sense */
+    if (flags & VERTO_EV_FLAG_PERSIST) /* persist makes no sense */
         return NULL;
-    doadd(ev->option.child.pid = pid, VERTO_EV_TYPE_CHILD);
+#ifdef WIN32
+    if (proc == NULL)
+#else
+    if (proc < 1)
+#endif
+        return NULL;
+    doadd(ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
 }
 
 void *
@@ -631,15 +637,15 @@ verto_get_signal(const verto_ev *ev)
     return -1;
 }
 
-pid_t
-verto_get_pid(const verto_ev *ev) {
+verto_proc
+verto_get_proc(const verto_ev *ev) {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
-        return ev->option.child.pid;
-    return 0;
+        return ev->option.child.proc;
+    return (verto_proc) 0;
 }
 
-int
-verto_get_pid_status(const verto_ev *ev)
+verto_proc_status
+verto_get_proc_status(const verto_ev *ev)
 {
     return ev->option.child.status;
 }
@@ -711,7 +717,7 @@ verto_fire(verto_ev *ev)
 }
 
 void
-verto_set_pid_status(verto_ev *ev, int status)
+verto_set_proc_status(verto_ev *ev, verto_proc_status status)
 {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
         ev->option.child.status = status;

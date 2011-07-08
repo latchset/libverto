@@ -46,7 +46,7 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 void
 cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
-    exitstatus = verto_get_pid_status(ev);
+    exitstatus = verto_get_proc_status(ev);
 }
 
 int

@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 echo "Library Path: $LIBVERTO" >&2
-echo -n "Hash: "
+echo -n "Hash Command: "
 if which md5sum 2>/dev/null; then
   HASHCMD="md5sum"
 elif which md5; then
@@ -12,4 +12,5 @@ else
 fi
 
 HASH=`nm -g $LIBVERTO | awk '/^[0-9a-fA-F]+ T / { print $NF; }' | sort -u | $HASHCMD | cut -d' ' -f1`
-test $HASH = 6910468a2981605ab75fd3c21150e400
+echo "Hash: $HASH"
+test $HASH = 32de51d27531d545aad6c03461f72648

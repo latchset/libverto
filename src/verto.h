@@ -28,6 +28,15 @@
 #include <time.h>   /* For time_t */
 #include <unistd.h> /* For pid_t */
 
+#ifdef WIN32
+#include <windows.h>
+typedef HANDLE verto_proc;
+typedef DWORD verto_proc_status;
+#else
+typedef pid_t verto_proc;
+typedef int verto_proc_status;
+#endif
+
 #define VERTO_SIG_IGN ((verto_callback *) 1)
 
 typedef struct _verto_ev_ctx verto_ev_ctx;
@@ -303,12 +312,12 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param priv Data which will be passed to the callback.
- * @param child The pid of the child to watch for.
+ * @param child The pid (POSIX) or handle (Win32) of the child to watch for.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
 verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
-                verto_callback *callback, void *priv, pid_t pid);
+                verto_callback *callback, void *priv, verto_proc proc);
 
 /**
  * Gets the private pointer of the verto_ev.
@@ -383,24 +392,24 @@ int
 verto_get_signal(const verto_ev *ev);
 
 /**
- * Gets the pid associated with a child verto_ev.
+ * Gets the process associated with a child verto_ev.
  *
  * @see verto_add_child()
- * @param ev The verto_ev to retrieve the file descriptor from.
- * @return The pid, or 0 if not a child event.
+ * @param ev The verto_ev to retrieve the process from.
+ * @return The pid/handle, or 0/NULL if not a child event (POSIX/Win32).
  */
-pid_t
-verto_get_pid(const verto_ev *ev);
+verto_proc
+verto_get_proc(const verto_ev *ev);
 
 /**
- * Gets the status of the pid which caused this event to fire.
+ * Gets the status of the process which caused this event to fire.
  *
  * @see verto_add_child()
  * @param ev The verto_ev to retrieve the status from.
- * @return The pid status.
+ * @return The pid/handle status.
  */
-int
-verto_get_pid_status(const verto_ev *ev);
+verto_proc_status
+verto_get_proc_status(const verto_ev *ev);
 
 /**
  * Removes an event from from the event context and frees it.
