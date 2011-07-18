@@ -207,6 +207,10 @@ verto_break(verto_ev_ctx *ctx);
  * after its execution. In either case, you may call verto_del() at any time
  * to prevent the event from executing.
  *
+ * NOTE: On Windows, the underlying select() only works with sockets. As such,
+ * any attempt to add a non-socket io event on Windows will produce undefined
+ * results and may even crash.
+ *
  * @see verto_del()
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set (at least one VERTO_EV_FLAG_IO* required).
