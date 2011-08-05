@@ -138,8 +138,12 @@ pdladdrmodname(void *addr, char **buf) {
 }
 #endif
 
-#ifndef _NSIG
-#define _NSIG SIGRTMIN
+#ifndef NSIG
+#ifdef _NSIG
+#define NSIG _NSIG
+#else
+#define NSIG SIGRTMIN
+#endif
 #endif
 
 #define  _str(s) # s
@@ -486,7 +490,7 @@ verto_free(verto_ev_ctx *ctx)
 #endif
         pdlclose(ctx->dll);
 #ifndef WIN32
-        for (i=1 ; i < _NSIG ; i++) {
+        for (i=1 ; i < NSIG ; i++) {
             if (sigaction(i, NULL, &act) == 0) {
                 if (act.sa_flags & SA_SIGINFO) {
                     if (!pdladdrmodname(act.sa_sigaction, NULL))
