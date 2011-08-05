@@ -93,14 +93,14 @@ fi
 AM_CONDITIONAL([WITH_TEVENT], [test x$with_tevent = xyes])
 
 
-echo -e ""
-echo -e "LIBRARIES TO BE BUILT"
-echo -e "\tlibverto\t\tyes"
-echo -e "\tlibverto-glib\t\t$with_glib"
-echo -e "\tlibverto-libev\t\t$with_libev"
-echo -e "\tlibverto-libevent\t$with_libevent"
-echo -e "\tlibverto-tevent\t\t$with_tevent"
-echo -e ""
+AC_MSG_NOTICE()
+AC_MSG_NOTICE([LIBRARIES TO BE BUILT])
+AC_MSG_NOTICE(AS_HELP_STRING([libverto], [yes]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-glib], [$with_glib]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-libev], [$with_libev]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-libevent], [$with_libevent]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-tevent], [$with_tevent]))
+AC_MSG_NOTICE()
 
 AC_CONFIG_FILES(Makefile
                 src/Makefile
