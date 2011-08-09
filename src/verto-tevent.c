@@ -32,6 +32,10 @@
 #define tctx(p) ((tevent_ev_ctx *) p)->ctx
 #define texit(p) ((tevent_ev_ctx *) p)->exit
 
+#ifndef TEVENT_FD_ERROR
+#define TEVENT_FD_ERROR 0
+#endif /* TEVENT_FD_ERROR */
+
 static struct tevent_context *defctx;
 
 typedef struct {
@@ -83,7 +87,7 @@ tevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
     time_t interval;
     struct timeval tv;
-    uint16_t teventflags = 0;
+    uint16_t teventflags = TEVENT_FD_ERROR;
 
     *flags |= VERTO_EV_FLAG_PERSIST;
     switch (verto_get_type(ev)) {
