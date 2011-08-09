@@ -43,10 +43,6 @@
 
 #include <verto-module.h>
 
-typedef char bool;
-#define true ((bool) 1)
-#define false ((bool) 0)
-
 #ifdef WIN32
 #define pdlmsuffix ".dll"
 #define pdlmtype HMODULE
@@ -112,7 +108,7 @@ pdladdrmodname(void *addr, char **buf) {
 #define pdlsym(mod, sym) dlsym(mod, sym)
 #define pdlerror() strdup(dlerror())
 
-static bool
+static int
 pdlsymlinked(const char* modn, const char* symb)
 {
     void* mod = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL);
@@ -121,20 +117,20 @@ pdlsymlinked(const char* modn, const char* symb)
         dlclose(mod);
         return sym != NULL;
     }
-    return false;
+    return 0;
 }
 
-static bool
+static int
 pdladdrmodname(void *addr, char **buf) {
     Dl_info dlinfo;
     if (!dladdr(addr, &dlinfo))
-        return false;
+        return 0;
     if (buf) {
         *buf = strdup(dlinfo.dli_fname);
         if (!*buf)
-            return false;
+            return 0;
     }
-    return true;
+    return 1;
 }
 #endif
 
@@ -173,7 +169,7 @@ struct _verto_ev {
     verto_ev_flag flags;
     verto_ev_flag actual;
     size_t depth;
-    bool deleted;
+    int deleted;
     union {
         int fd;
         int signal;
@@ -211,14 +207,14 @@ _asprintf(char **strp, const char *fmt, ...) {
     return size;
 }
 
-static bool
-do_load_file(const char *filename, bool reqsym, pdlmtype *dll,
+static int
+do_load_file(const char *filename, int reqsym, pdlmtype *dll,
              const verto_module **module)
 {
     *dll = pdlopenl(filename);
     if (!*dll) {
         /* printf("%s -- %s\n", filename, pdlerror()); */
-        return false;
+        return 0;
     }
 
     *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
@@ -233,28 +229,28 @@ do_load_file(const char *filename, bool reqsym, pdlmtype *dll,
     /* Re-open in execution mode */
     *dll = pdlreopen(filename, *dll);
     if (!*dll)
-        return false;
+        return 0;
 
     /* Get the module struct again */
     *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
     if (!*module)
         goto error;
 
-    return true;
+    return 1;
 
     error:
         pdlclose(dll);
-        return false;
+        return 0;
 }
 
-static bool
+static int
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            bool reqsym, pdlmtype *dll, const verto_module **module)
+            int reqsym, pdlmtype *dll, const verto_module **module)
 {
     *module = NULL;
     DIR *dir = opendir(dirname);
     if (!dir)
-        return false;
+        return 0;
 
     struct dirent *ent = NULL;
     while ((ent = readdir(dir))) {
@@ -272,7 +268,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
         if (_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
             continue;
 
-        bool success = do_load_file(tmp, reqsym, dll, module);
+        int success = do_load_file(tmp, reqsym, dll, module);
         free(tmp);
         if (success)
             break;
@@ -283,16 +279,16 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
     return module != NULL;
 }
 
-static bool
+static int
 load_module(const char *impl, pdlmtype *dll, const verto_module **module)
 {
-    bool success = false;
+    int success = 0;
     char *prefix = NULL;
     char *suffix = NULL;
     char *tmp = NULL;
 
     if (!pdladdrmodname(verto_convert_funcs, &prefix))
-        return false;
+        return 0;
 
     /* Example output:
      *    prefix == /usr/lib/libverto-
@@ -302,19 +298,19 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
     suffix = strstr(prefix, pdlmsuffix);
     if (!suffix || strlen(suffix) < 1 || !(suffix = strdup(suffix))) {
         free(prefix);
-        return false;
+        return 0;
     }
     strcpy(prefix + strlen(prefix) - strlen(suffix), "-");
 
     if (impl) {
         /* Try to do a load by the path */
         if (strchr(impl, '/'))
-            success = do_load_file(impl, false, dll, module);
+            success = do_load_file(impl, 0, dll, module);
         if (!success) {
             /* Try to do a load by the name */
             tmp = NULL;
             if (_asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
-                success = do_load_file(tmp, false, dll, module);
+                success = do_load_file(tmp, 0, dll, module);
                 free(tmp);
             }
         }
@@ -335,7 +331,7 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
 
                 if (dname && prefix) {
                     /* Attempt to find a module we are already linked to */
-                    success = do_load_dir(dname, prefix, suffix, true, dll,
+                    success = do_load_dir(dname, prefix, suffix, 1, dll,
                                           module);
                     if (!success) {
 #ifdef DEFAULT_LIBRARY
@@ -344,7 +340,7 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
                         if (!success)
 #endif /* DEFAULT_LIBRARY */
                         /* Attempt to load any plugin (we're desperate) */
-                        success = do_load_dir(dname, prefix, suffix, false, dll,
+                        success = do_load_dir(dname, prefix, suffix, 0, dll,
                                               module);
                     }
                 }
@@ -666,7 +662,7 @@ verto_del(verto_ev *ev)
      *
      * If we don't do this, than verto_fire() will access freed memory. */
     if (ev->depth > 0) {
-        ev->deleted = true;
+        ev->deleted = 1;
         return;
     }
 
