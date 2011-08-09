@@ -73,7 +73,7 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
     return type ## w
 
 static void *
-libev_ctx_add(void *ctx, const verto_ev *ev, char *persists)
+libev_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
     ev_io *iow = NULL;
     ev_timer *timerw = NULL;
@@ -83,7 +83,7 @@ libev_ctx_add(void *ctx, const verto_ev *ev, char *persists)
     ev_tstamp interval;
     int events = EV_NONE;
 
-    *persists = 1;
+    *flags |= VERTO_EV_FLAG_PERSIST;
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_IO:
             if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
@@ -99,7 +99,7 @@ libev_ctx_add(void *ctx, const verto_ev *ev, char *persists)
         case VERTO_EV_TYPE_SIGNAL:
             setuptype(signal, ev, libev_callback, verto_get_signal(ev));
         case VERTO_EV_TYPE_CHILD:
-            *persists = 0;
+            *flags &= ~VERTO_EV_FLAG_PERSIST; /* Child events don't persist */
             setuptype(child, ev, libev_callback, verto_get_proc(ev), 0);
         default:
             return NULL; /* Not supported */

@@ -68,36 +68,35 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
 }
 
 static void *
-libevent_ctx_add(void *ctx, const verto_ev *ev, char *persists)
+libevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
     struct event *priv = NULL;
     struct timeval *timeout = NULL;
     struct timeval tv;
-    int flags = 0;
-    verto_ev_flag evflags = verto_get_flags(ev);
+    int libeventflags = 0;
 
-    *persists = evflags & VERTO_EV_FLAG_PERSIST;
-    if (*persists)
-        flags |= EV_PERSIST;
+    if (*flags & VERTO_EV_FLAG_PERSIST)
+        libeventflags |= EV_PERSIST;
 
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
-        if (evflags & VERTO_EV_FLAG_IO_READ)
-            flags |= EV_READ;
-        if (evflags & VERTO_EV_FLAG_IO_WRITE)
-            flags |= EV_WRITE;
-        priv = event_new(ctx, verto_get_fd(ev), flags, libevent_callback,
-                         (void *) ev);
+        if (*flags & VERTO_EV_FLAG_IO_READ)
+            libeventflags |= EV_READ;
+        if (*flags & VERTO_EV_FLAG_IO_WRITE)
+            libeventflags |= EV_WRITE;
+        priv = event_new(ctx, verto_get_fd(ev), libeventflags,
+                         libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_TIMEOUT:
         timeout = &tv;
         tv.tv_sec = verto_get_interval(ev) / 1000;
         tv.tv_usec = verto_get_interval(ev) % 1000 * 1000;
-        priv = event_new(ctx, -1, EV_TIMEOUT | flags, libevent_callback,
-                         (void *) ev);
+        priv = event_new(ctx, -1, EV_TIMEOUT | libeventflags,
+                         libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_SIGNAL:
-        priv = event_new(ctx, verto_get_signal(ev), EV_SIGNAL | flags,
+        priv = event_new(ctx, verto_get_signal(ev),
+                         EV_SIGNAL | libeventflags,
                          libevent_callback, (void *) ev);
         break;
     case VERTO_EV_TYPE_IDLE:
@@ -109,11 +108,11 @@ libevent_ctx_add(void *ctx, const verto_ev *ev, char *persists)
     if (!priv)
         return NULL;
 
-    if (evflags & VERTO_EV_FLAG_PRIORITY_HIGH)
+    if (*flags & VERTO_EV_FLAG_PRIORITY_HIGH)
         event_priority_set(priv, 0);
-    else if (evflags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+    else if (*flags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
         event_priority_set(priv, 1);
-    else if (evflags & VERTO_EV_FLAG_PRIORITY_LOW)
+    else if (*flags & VERTO_EV_FLAG_PRIORITY_LOW)
         event_priority_set(priv, 2);
 
     event_add(priv, timeout);

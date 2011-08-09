@@ -63,7 +63,7 @@ typedef struct {
     void  (*ctx_run)(void *ctx);
     void  (*ctx_run_once)(void *ctx);
     void  (*ctx_break)(void *ctx);
-    void *(*ctx_add)(void *ctx, const verto_ev *ev, char *persists);
+    void *(*ctx_add)(void *ctx, const verto_ev *ev, verto_ev_flag *flags);
     void  (*ctx_del)(void *ctx, const verto_ev *ev, void *evpriv);
 } verto_ev_ctx_funcs;
 

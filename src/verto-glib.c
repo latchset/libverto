@@ -111,13 +111,10 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 }
 
 static void *
-glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
+glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
     glib_ev *gev = NULL;
     verto_ev_type type = verto_get_type(ev);
-    verto_ev_flag flags = verto_get_flags(ev);
-
-    *persists = flags & VERTO_EV_FLAG_PERSIST;
 
     gev = g_new0(glib_ev, 1);
     if (!gev)
@@ -135,9 +132,9 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
             g_io_channel_set_close_on_unref(gev->chan, FALSE);
 
             GIOCondition cond = 0;
-            if (flags & VERTO_EV_FLAG_IO_READ)
+            if (*flags & VERTO_EV_FLAG_IO_READ)
                 cond |= G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-            if (flags & VERTO_EV_FLAG_IO_WRITE)
+            if (*flags & VERTO_EV_FLAG_IO_WRITE)
                 cond |= G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
             gev->src = g_io_create_watch(gev->chan, cond);
             break;
@@ -149,7 +146,7 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
             break;
         case VERTO_EV_TYPE_CHILD:
             gev->src = g_child_watch_source_new(verto_get_proc(ev));
-            *persists = FALSE;
+            *flags &= ~VERTO_EV_FLAG_PERSIST; /* Child events don't persist */
             break;
         case VERTO_EV_TYPE_SIGNAL:
 #if GLIB_MAJOR_VERSION >= 2
@@ -174,11 +171,11 @@ glib_ctx_add(void *ctx, const verto_ev *ev, char *persists)
     else
         g_source_set_callback(gev->src, glib_callback, (void *) ev, NULL);
 
-    if (flags & VERTO_EV_FLAG_PRIORITY_HIGH)
+    if (*flags & VERTO_EV_FLAG_PRIORITY_HIGH)
         g_source_set_priority(gev->src, G_PRIORITY_HIGH);
-    else if (flags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+    else if (*flags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
         g_source_set_priority(gev->src, G_PRIORITY_DEFAULT_IDLE);
-    else if (flags & VERTO_EV_FLAG_PRIORITY_LOW)
+    else if (*flags & VERTO_EV_FLAG_PRIORITY_LOW)
         g_source_set_priority(gev->src, G_PRIORITY_LOW);
 
     g_source_set_can_recurse(gev->src, FALSE);

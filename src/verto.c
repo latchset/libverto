@@ -171,7 +171,7 @@ struct _verto_ev {
     void *priv;
     void *modpriv;
     verto_ev_flag flags;
-    bool persists;
+    verto_ev_flag actual;
     size_t depth;
     bool deleted;
     union {
@@ -537,7 +537,8 @@ verto_break(verto_ev_ctx *ctx)
     verto_ev *ev = make_ev(ctx, callback, priv, type, flags); \
     if (ev) { \
         set; \
-        ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev, &ev->persists); \
+        ev->actual = ev->flags; \
+        ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev, &ev->actual); \
         if (!ev->modpriv) { \
             free(ev); \
             return NULL; \
@@ -711,8 +712,9 @@ verto_fire(verto_ev *ev)
     if (ev->depth == 0) {
         if (!(ev->flags & VERTO_EV_FLAG_PERSIST) || ev->deleted)
             verto_del(ev);
-        else if (!ev->persists) {
-            priv = ev->ctx->funcs.ctx_add(ev->ctx->modpriv, ev, &ev->persists);
+        else if (!ev->actual & VERTO_EV_FLAG_PERSIST) {
+            ev->actual = ev->flags;
+            priv = ev->ctx->funcs.ctx_add(ev->ctx->modpriv, ev, &ev->actual);
             assert(priv); /* TODO: create an error callback */
             ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
             ev->modpriv = priv;
