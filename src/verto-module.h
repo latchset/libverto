@@ -31,7 +31,7 @@
 
 #define VERTO_MODULE_VERSION 1
 #define VERTO_MODULE_TABLE verto_module_table
-#define VERTO_MODULE(name, symb) \
+#define VERTO_MODULE(name, symb, types) \
     static verto_ev_ctx_funcs name ## _funcs = { \
         name ## _ctx_free, \
         name ## _ctx_run, \
@@ -44,6 +44,7 @@
         VERTO_MODULE_VERSION, \
         # name, \
         # symb, \
+        types, \
         verto_new_ ## name, \
         verto_default_ ## name, \
     };
@@ -54,6 +55,7 @@ typedef struct {
     unsigned int vers;
     const char *name;
     const char *symb;
+    verto_ev_type types;
     verto_ev_ctx_constructor new_ctx;
     verto_ev_ctx_constructor def_ctx;
 } verto_module;

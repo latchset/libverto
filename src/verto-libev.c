@@ -127,7 +127,12 @@ libev_ctx_del(void *ctx, const verto_ev *ev, void *evpriv)
     free(evpriv);
 }
 
-VERTO_MODULE(libev, ev_loop_new);
+VERTO_MODULE(libev, ev_loop_new,
+             VERTO_EV_TYPE_IO |
+             VERTO_EV_TYPE_TIMEOUT |
+             VERTO_EV_TYPE_IDLE |
+             VERTO_EV_TYPE_SIGNAL |
+             VERTO_EV_TYPE_CHILD);
 
 verto_ev_ctx *
 verto_new_libev()

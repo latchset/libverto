@@ -27,6 +27,23 @@
 #include <verto-glib.h>
 #include <verto-module.h>
 
+#if GLIB_MAJOR_VERSION >= 2
+#if GLIB_MINOR_VERSION >= 29
+#ifndef WIN32 /* Not supported on Windows */
+#define HAS_SIGNAL VERTO_EV_TYPE_SIGNAL
+#endif
+#endif /* GLIB_MINOR_VERSION >= 29 */
+#endif /* GLIB_MAJOR_VERSION >= 2 */
+#ifndef HAS_SIGNAL
+#define HAS_SIGNAL 0
+#endif
+
+#define VERTO_GLIB_SUPPORTED_TYPES (VERTO_EV_TYPE_IO \
+                                    | VERTO_EV_TYPE_TIMEOUT \
+                                    | VERTO_EV_TYPE_IDLE \
+                                    | HAS_SIGNAL \
+                                    | VERTO_EV_TYPE_CHILD)
+
 typedef struct {
     GMainContext *context;
     GMainLoop *loop;
@@ -213,7 +230,7 @@ glib_ctx_del(void *lp, const verto_ev *ev, void *evpriv)
     g_free(evpriv);
 }
 
-VERTO_MODULE(glib, g_main_context_default);
+VERTO_MODULE(glib, g_main_context_default, VERTO_GLIB_SUPPORTED_TYPES);
 
 verto_ev_ctx *
 verto_new_glib() {

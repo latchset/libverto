@@ -126,7 +126,10 @@ libevent_ctx_del(void *ctx, const verto_ev *ev, void *evpriv)
     event_free(evpriv);
 }
 
-VERTO_MODULE(libevent, event_base_init);
+VERTO_MODULE(libevent, event_base_init,
+             VERTO_EV_TYPE_IO |
+             VERTO_EV_TYPE_TIMEOUT |
+             VERTO_EV_TYPE_SIGNAL);
 
 verto_ev_ctx *
 verto_new_libevent()

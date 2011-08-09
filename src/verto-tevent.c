@@ -120,7 +120,10 @@ tevent_ctx_del(void *priv, const verto_ev *ev, void *evpriv)
     talloc_free(evpriv);
 }
 
-VERTO_MODULE(tevent, g_main_context_default);
+VERTO_MODULE(tevent, g_main_context_default,
+             VERTO_EV_TYPE_IO |
+             VERTO_EV_TYPE_TIMEOUT |
+             VERTO_EV_TYPE_SIGNAL);
 
 verto_ev_ctx *
 verto_new_tevent()

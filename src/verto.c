@@ -150,6 +150,7 @@ pdladdrmodname(void *addr, char **buf) {
 struct _verto_ev_ctx {
     void *dll;
     void *modpriv;
+    verto_ev_type types;
     verto_ev_ctx_funcs funcs;
     verto_ev *events;
 };
@@ -208,8 +209,8 @@ _asprintf(char **strp, const char *fmt, ...) {
 }
 
 static int
-do_load_file(const char *filename, int reqsym, pdlmtype *dll,
-             const verto_module **module)
+do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
+             pdlmtype *dll, const verto_module **module)
 {
     *dll = pdlopenl(filename);
     if (!*dll) {
@@ -226,6 +227,10 @@ do_load_file(const char *filename, int reqsym, pdlmtype *dll,
     if ((*module)->symb && reqsym && !pdlsymlinked(NULL, (*module)->symb))
         goto error;
 
+    /* Check to make sure that this module supports our required features */
+    if (reqtypes != VERTO_EV_TYPE_NONE && ((*module)->types & reqtypes) != reqtypes)
+        goto error;
+
     /* Re-open in execution mode */
     *dll = pdlreopen(filename, *dll);
     if (!*dll)
@@ -239,13 +244,14 @@ do_load_file(const char *filename, int reqsym, pdlmtype *dll,
     return 1;
 
     error:
-        pdlclose(dll);
+        pdlclose(*dll);
         return 0;
 }
 
 static int
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            int reqsym, pdlmtype *dll, const verto_module **module)
+            int reqsym, verto_ev_type reqtypes, pdlmtype *dll,
+            const verto_module **module)
 {
     *module = NULL;
     DIR *dir = opendir(dirname);
@@ -268,7 +274,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
         if (_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
             continue;
 
-        int success = do_load_file(tmp, reqsym, dll, module);
+        int success = do_load_file(tmp, reqsym, reqtypes, dll, module);
         free(tmp);
         if (success)
             break;
@@ -280,7 +286,8 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
 }
 
 static int
-load_module(const char *impl, pdlmtype *dll, const verto_module **module)
+load_module(const char *impl, verto_ev_type reqtypes, pdlmtype *dll,
+            const verto_module **module)
 {
     int success = 0;
     char *prefix = NULL;
@@ -305,19 +312,26 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
     if (impl) {
         /* Try to do a load by the path */
         if (strchr(impl, '/'))
-            success = do_load_file(impl, 0, dll, module);
+            success = do_load_file(impl, 0, reqtypes, dll, module);
         if (!success) {
             /* Try to do a load by the name */
             tmp = NULL;
             if (_asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
-                success = do_load_file(tmp, 0, dll, module);
+                success = do_load_file(tmp, 0, reqtypes, dll, module);
                 free(tmp);
             }
         }
     } else {
         /* First, try the default implementation (aka 'the cache')*/
         *dll = NULL;
-        if (!(success = (*module = defmodule) != NULL)) {
+        *module = NULL;
+
+        if (defmodule != NULL
+                && (reqtypes == VERTO_EV_TYPE_NONE
+                        || (defmodule->types & reqtypes) == reqtypes))
+            *module = defmodule;
+
+        if (!(success = *module != NULL)) {
             /* NULL was passed, so we will use the dirname of
              * the prefix to try and find any possible plugins */
             tmp = strdup(prefix);
@@ -331,17 +345,17 @@ load_module(const char *impl, pdlmtype *dll, const verto_module **module)
 
                 if (dname && prefix) {
                     /* Attempt to find a module we are already linked to */
-                    success = do_load_dir(dname, prefix, suffix, 1, dll,
-                                          module);
+                    success = do_load_dir(dname, prefix, suffix, 1, reqtypes,
+                                          dll, module);
                     if (!success) {
 #ifdef DEFAULT_LIBRARY
                         /* Attempt to find the default module */
-                        success = load_module(DEFAULT_LIBRARY, dll, module);
+                        success = load_module(DEFAULT_LIBRARY, reqtypes, dll, module);
                         if (!success)
 #endif /* DEFAULT_LIBRARY */
                         /* Attempt to load any plugin (we're desperate) */
-                        success = do_load_dir(dname, prefix, suffix, 0, dll,
-                                              module);
+                        success = do_load_dir(dname, prefix, suffix, 0,
+                                              reqtypes, dll, module);
                     }
                 }
 
@@ -406,13 +420,13 @@ signal_ignore(verto_ev_ctx *ctx, verto_ev *ev)
 }
 
 verto_ev_ctx *
-verto_new(const char *impl)
+verto_new(const char *impl, verto_ev_type reqtypes)
 {
     pdlmtype dll = NULL;
     const verto_module *module = NULL;
     verto_ev_ctx *ctx = NULL;
 
-    if (!load_module(impl, &dll, &module))
+    if (!load_module(impl, reqtypes, &dll, &module))
         return NULL;
 
     ctx = module->new_ctx();
@@ -425,13 +439,13 @@ verto_new(const char *impl)
 }
 
 verto_ev_ctx *
-verto_default(const char *impl)
+verto_default(const char *impl, verto_ev_type reqtypes)
 {
     pdlmtype dll = NULL;
     const verto_module *module = NULL;
     verto_ev_ctx *ctx = NULL;
 
-    if (!load_module(impl, &dll, &module))
+    if (!load_module(impl, reqtypes, &dll, &module))
         return NULL;
 
     ctx = module->def_ctx();
@@ -444,10 +458,10 @@ verto_default(const char *impl)
 }
 
 int
-verto_set_default(const char *impl)
+verto_set_default(const char *impl, verto_ev_type reqtypes)
 {
     pdlmtype dll = NULL; /* we will leak the dll */
-    return (!defmodule && impl && load_module(impl, &dll, &defmodule));
+    return (!defmodule && impl && load_module(impl, reqtypes, &dll, &defmodule));
 }
 
 void
@@ -671,6 +685,12 @@ verto_del(verto_ev *ev)
     free(ev);
 }
 
+verto_ev_type
+verto_get_supported_types(verto_ev_ctx *ctx)
+{
+    return ctx->types;
+}
+
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
 verto_ev_ctx *
@@ -689,6 +709,7 @@ verto_convert_funcs(const verto_ev_ctx_funcs *funcs,
 
     ctx->modpriv = ctx_private;
     ctx->funcs = *funcs;
+    ctx->types = module->types;
 
     if (!defmodule)
         defmodule = module;

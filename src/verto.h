@@ -43,11 +43,12 @@ typedef struct _verto_ev_ctx verto_ev_ctx;
 typedef struct _verto_ev verto_ev;
 
 typedef enum {
-    VERTO_EV_TYPE_IO,
-    VERTO_EV_TYPE_TIMEOUT,
-    VERTO_EV_TYPE_IDLE,
-    VERTO_EV_TYPE_SIGNAL,
-    VERTO_EV_TYPE_CHILD
+    VERTO_EV_TYPE_NONE = 0,
+    VERTO_EV_TYPE_IO = 1,
+    VERTO_EV_TYPE_TIMEOUT = 1 << 1,
+    VERTO_EV_TYPE_IDLE = 1 << 2,
+    VERTO_EV_TYPE_SIGNAL = 1 << 3,
+    VERTO_EV_TYPE_CHILD = 1 << 4
 } verto_ev_type;
 
 typedef enum {
@@ -64,7 +65,8 @@ typedef enum {
 typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
 
 /**
- * Creates a new event context using an optionally specified implementation.
+ * Creates a new event context using an optionally specified implementation
+ * and/or optionally specified required features.
  *
  * If you are an application that has already decided on using a particular
  * event loop implementation, you should not call this function, but instead
@@ -78,12 +80,13 @@ typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
  * where you have a need to choose an implementation at run time, usually
  * for testing purposes.  The second and more common is when you simply
  * wish to remain implementation agnostic.  In this later case, you should
- * always call like this: verto_new(NULL).  This lets verto choose the best
+ * always call like this: verto_new(NULL, ...).  This lets verto choose the best
  * implementation to use.
  *
  * If impl is not NULL, a new context is returned which is backed by the
  * implementation specified. If the implementation specified is not
- * available, NULL is returned.  The parameter 'impl' can specify:
+ * available or if the required types (reqtypes) are not provided by the
+ * named implementation, NULL is returned. The parameter 'impl' can specify:
  *   * The full path to an implementation library
  *   * The name of the implementation library (i.e. - "glib" or "libev")
  *
@@ -107,12 +110,18 @@ typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
  * Last, verto will attempt to load any implementation installed. The specific
  * order of this step is undefined.
  *
+ * In all cases above, if the implementation does not support all the specified
+ * features (reqtypes), it will be skipped and processing will continue from
+ * where it left off. This means that if verto_new() returns non-NULL it is
+ * guaranteed to support the features you specified.
+ *
  * @see verto_set_default()
  * @param impl The implementation to use, or NULL.
+ * @param reqtypes A bitwise or'd list of required event type features.
  * @return A new _ev_ctx, or NULL on error.  Call verto_free() when done.
  */
 verto_ev_ctx *
-verto_new(const char *impl);
+verto_new(const char *impl, verto_ev_type reqtypes);
 
 /**
  * Gets the default event context using an optionally specified implementation.
@@ -130,10 +139,11 @@ verto_new(const char *impl);
  * @see verto_new()
  * @see verto_free()
  * @param impl The implementation to use, or NULL.
+ * @param reqtypes A bitwise or'd list of required event type features.
  * @return The default _ev_ctx, or NULL on error.  Call verto_free() when done.
  */
 verto_ev_ctx *
-verto_default(const char *impl);
+verto_default(const char *impl, verto_ev_type reqtypes);
 
 /**
  * Sets the default implementation to use by its name.
@@ -142,20 +152,22 @@ verto_default(const char *impl);
  * following reasons:
  *   1. The default implementation was already set via verto_set_default().
  *   2. The implementation specified could not be found.
- *   3. The impl argument was NULL.
- *   4. verto_new() was already called.
- *   5. verto_default() was already called.
- *   6. verto_new_NAME() was already called.
- *   7. verto_default_NAME() was already called.
- *   8. verto_convert_NAME() was already called.
+ *   3. The implementation specified didn't support the features specified.
+ *   4. The impl argument was NULL.
+ *   5. verto_new() was already called.
+ *   6. verto_default() was already called.
+ *   7. verto_new_NAME() was already called.
+ *   8. verto_default_NAME() was already called.
+ *   9. verto_convert_NAME() was already called.
  *
  * @see verto_new()
  * @see verto_default()
  * @param impl The implementation to use.
+ * @param reqtypes A bitwise or'd list of required event type features.
  * @return The default _ev_ctx, or NULL on error.  Call verto_free() when done.
  */
 int
-verto_set_default(const char *impl);
+verto_set_default(const char *impl, verto_ev_type reqtypes);
 
 /**
  * Frees a verto_ev_ctx.
@@ -429,5 +441,14 @@ verto_get_proc_status(const verto_ev *ev);
  */
 void
 verto_del(verto_ev *ev);
+
+/**
+ * Returns the event types supported by this implementation.
+ *
+ * @param ctx The verto_ev_ctx to query.
+ * @return The event types supported.
+ */
+verto_ev_type
+verto_get_supported_types(verto_ev_ctx *ctx);
 
 #endif /* VERTO_H_ */
