@@ -618,6 +618,8 @@ verto_set_private(verto_ev *ev, void *priv, verto_callback *free)
 {
     if (!ev)
         return 0;
+    if (ev->onfree)
+        ev->onfree(ev->ctx, ev);
     ev->priv = priv;
     ev->onfree = free;
     return 1;
