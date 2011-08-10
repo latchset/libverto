@@ -66,9 +66,9 @@ cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     assert(elapsed(SLEEP_MIN, SLEEP_MAX));
     if (++callcount == 3)
-        assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, SLEEP*2));
+        assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, SLEEP*2));
     else if (callcount == 2) {
-        assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, cb, NULL, SLEEP));
+        assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, cb, SLEEP));
         verto_del(ev);
     }
 }
@@ -79,6 +79,6 @@ do_test(verto_ev_ctx *ctx)
     callcount = 0;
 
     assert(gettimeofday(&starttime, NULL) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL, SLEEP));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_PERSIST, cb, SLEEP));
     return 0;
 }

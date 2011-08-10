@@ -74,7 +74,7 @@ read_cb(verto_ev_ctx *ctx, verto_ev *ev)
     close(fd);
     fds[0] = -1;
 
-    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, error_cb, NULL, fds[1]));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, error_cb, fds[1]));
 }
 
 static void
@@ -85,7 +85,7 @@ write_cb(verto_ev_ctx *ctx, verto_ev *ev)
     fd = verto_get_fd(ev);
     assert(write(fd, DATA, DATALEN) == DATALEN);
 
-    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_READ, read_cb, NULL, fds[0]));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_READ, read_cb, fds[0]));
 }
 
 int
@@ -95,11 +95,13 @@ do_test(verto_ev_ctx *ctx)
     fds[0] = -1;
     fds[1] = -1;
 
-    if (!verto_add_signal(ctx, VERTO_EV_FLAG_NONE, VERTO_SIG_IGN, NULL, SIGPIPE))
+    assert(verto_get_supported_types(ctx) & VERTO_EV_TYPE_IO);
+
+    if (!verto_add_signal(ctx, VERTO_EV_FLAG_NONE, VERTO_SIG_IGN, SIGPIPE))
         signal(SIGPIPE, SIG_IGN);
 
     assert(pipe(fds) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
-    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, write_cb, NULL, fds[1]));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, 1000));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_WRITE, write_cb, fds[1]));
     return 0;
 }

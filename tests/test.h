@@ -64,7 +64,7 @@ main(int argc, char **argv)
     for (i=0 ; MODULES[i] ; i++) {
         printf("Module: %s\n", MODULES[i]);
 
-        ctx = verto_default(MODULES[i]);
+        ctx = verto_default(MODULES[i], VERTO_EV_TYPE_NONE);
         if (!ctx)
             return 1;
 

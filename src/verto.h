@@ -227,13 +227,12 @@ verto_break(verto_ev_ctx *ctx);
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set (at least one VERTO_EV_FLAG_IO* required).
  * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
  * @param fd The file descriptor to watch for reads.
  * @return The verto_ev registered with the event context or NULL on error.
  */
 verto_ev *
 verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
-             verto_callback *callback, void *priv, int fd);
+             verto_callback *callback, int fd);
 
 /**
  * Adds a callback executed after a period of time.
@@ -249,13 +248,12 @@ verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
  * @param interval Time period to wait before firing (in milliseconds).
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
 verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
-                  verto_callback *callback, void *priv, time_t interval);
+                  verto_callback *callback, time_t interval);
 
 /**
  * Adds a callback executed when there is nothing else to do.
@@ -271,12 +269,11 @@ verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
 verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
-               verto_callback *callback, void *priv);
+               verto_callback *callback);
 
 /**
  * Adds a callback executed when a signal is received.
@@ -287,6 +284,9 @@ verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
  * after its execution. In either case, you may call verto_del() at any time
  * to prevent the event from executing.
+ *
+ * NOTE: If you attempt to ignore a signal without the VERTO_EV_FLAG_PERSIST
+ * flag, this function fails.
  *
  * NOTE: SIGCHLD is expressly not supported. If you want this notification,
  * please use verto_add_child().
@@ -306,13 +306,12 @@ verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
  * @param signal The signal to watch for.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
 verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
-                 verto_callback *callback, void *priv, int signal);
+                 verto_callback *callback, int signal);
 
 /**
  * Adds a callback executed when a child process exits.
@@ -327,22 +326,33 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @param ctx The verto_ev_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
- * @param priv Data which will be passed to the callback.
  * @param child The pid (POSIX) or handle (Win32) of the child to watch for.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
 verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
-                verto_callback *callback, void *priv, verto_proc proc);
+                verto_callback *callback, verto_proc proc);
+
+/**
+ * Sets the private pointer of the verto_ev.
+ *
+ * The free callback will be called in two cases:
+ *   1. When the event is deleted (manually or automatically)
+ *   2. When verto_set_private() is called subsequent times
+ *
+ * @see verto_get_private()
+ * @param ev The verto_ev
+ * @param priv The private value to store
+ * @param free The callback used to free the data or NULL
+ * @return 1 on success or 0 on failure
+ */
+int
+verto_set_private(verto_ev *ev, void *priv, verto_callback *free);
 
 /**
  * Gets the private pointer of the verto_ev.
  *
- * @see verto_add_io()
- * @see verto_add_timeout()
- * @see verto_add_idle()
- * @see verto_add_signal()
- * @see verto_add_child()
+ * @see verto_set_private()
  * @param ev The verto_ev
  * @return The verto_ev private pointer
  */

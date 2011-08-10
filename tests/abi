@@ -13,4 +13,4 @@ fi
 
 HASH=`nm -g $LIBVERTO | awk '/^[0-9a-fA-F]+ T / { print $NF; }' | sort -u | $HASHCMD | cut -d' ' -f1`
 echo "Hash: $HASH"
-test $HASH = 32de51d27531d545aad6c03461f72648
+test $HASH = 4a2773985d96632229f07a0674818efd

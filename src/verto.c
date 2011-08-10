@@ -165,6 +165,7 @@ struct _verto_ev {
     verto_ev_ctx *ctx;
     verto_ev_type type;
     verto_callback *callback;
+    verto_callback *onfree;
     void *priv;
     void *modpriv;
     verto_ev_flag flags;
@@ -370,7 +371,7 @@ load_module(const char *impl, verto_ev_type reqtypes, pdlmtype *dll,
 }
 
 static verto_ev *
-make_ev(verto_ev_ctx *ctx, verto_callback *callback, void *priv,
+make_ev(verto_ev_ctx *ctx, verto_callback *callback,
         verto_ev_type type, verto_ev_flag flags)
 {
     verto_ev *ev = NULL;
@@ -384,7 +385,6 @@ make_ev(verto_ev_ctx *ctx, verto_callback *callback, void *priv,
         ev->ctx        = ctx;
         ev->type       = type;
         ev->callback   = callback;
-        ev->priv       = priv;
         ev->flags      = flags;
     }
 
@@ -544,7 +544,7 @@ verto_break(verto_ev_ctx *ctx)
 }
 
 #define doadd(set, type) \
-    verto_ev *ev = make_ev(ctx, callback, priv, type, flags); \
+    verto_ev *ev = make_ev(ctx, callback, type, flags); \
     if (ev) { \
         set; \
         ev->actual = ev->flags; \
@@ -559,7 +559,7 @@ verto_break(verto_ev_ctx *ctx)
 
 verto_ev *
 verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
-             verto_callback *callback, void *priv, int fd)
+             verto_callback *callback, int fd)
 {
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
         return NULL;
@@ -568,21 +568,21 @@ verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
 
 verto_ev *
 verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
-                  verto_callback *callback, void *priv, time_t interval)
+                  verto_callback *callback, time_t interval)
 {
     doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 verto_ev *
 verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
-               verto_callback *callback, void *priv)
+               verto_callback *callback)
 {
     doadd(, VERTO_EV_TYPE_IDLE);
 }
 
 verto_ev *
 verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
-                 verto_callback *callback, void *priv, int signal)
+                 verto_callback *callback, int signal)
 {
     if (signal < 0)
         return NULL;
@@ -600,7 +600,7 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
 
 verto_ev *
 verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
-                verto_callback *callback, void *priv, verto_proc proc)
+                verto_callback *callback, verto_proc proc)
 {
     if (flags & VERTO_EV_FLAG_PERSIST) /* persist makes no sense */
         return NULL;
@@ -611,6 +611,16 @@ verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
 #endif
         return NULL;
     doadd(ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
+}
+
+int
+verto_set_private(verto_ev *ev, void *priv, verto_callback *free)
+{
+    if (!ev)
+        return 0;
+    ev->priv = priv;
+    ev->onfree = free;
+    return 1;
 }
 
 void *
@@ -683,6 +693,8 @@ verto_del(verto_ev *ev)
         return;
     }
 
+    if (ev->onfree)
+        ev->onfree(ev->ctx, ev);
     ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
     remove_ev(&(ev->ctx->events), ev);
     free(ev);

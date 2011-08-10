@@ -83,9 +83,11 @@ do_test(verto_ev_ctx *ctx)
     fds[0] = -1;
     fds[1] = -1;
 
+    assert(verto_get_supported_types(ctx) & VERTO_EV_TYPE_IO);
+
     assert(pipe(fds) == 0);
-    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, NULL, 1000));
-    assert(verto_add_io(ctx, VERTO_EV_FLAG_PERSIST | VERTO_EV_FLAG_IO_READ, cb, NULL, fds[0]));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, timeout_cb, 1000));
+    assert(verto_add_io(ctx, VERTO_EV_FLAG_PERSIST | VERTO_EV_FLAG_IO_READ, cb, fds[0]));
     assert(write(fds[1], DATA, DATALEN) == DATALEN);
     return 0;
 }

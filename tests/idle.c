@@ -25,27 +25,27 @@
 #include "test.h"
 
 static int callcount;
-verto_ev *idle = NULL;
 
 void
 exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     retval = 1;
     switch (callcount) {
+        case 0:
+            printf("ERROR: Idle (persist) did not fire!\n");
+            break;
         case 1:
             printf("ERROR: Idle (persist) did not recur!\n");
             break;
         case 2:
             printf("ERROR: Idle (non-persist) did not fire!\n");
             break;
-        case 0:
-            if (idle) {
-                printf("ERROR: Idle (persist) did not fire!\n");
-                break;
-            }
-            printf("WARNING: Idle not supported!\n");
         case 3:
+            printf("ERROR: Idle on free did not fire!\n");
+            break;
+        case 4:
             retval = 0;
+            break;
         default:
             break;
     }
@@ -54,10 +54,16 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 }
 
 void
+onfree(verto_ev_ctx *ctx, verto_ev *ev) {
+    ++callcount;
+}
+
+void
 cb(verto_ev_ctx *ctx, verto_ev *ev)
 {
     if (++callcount == 2) {
-        verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb, NULL);
+        assert(verto_set_private(verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb),
+                                 NULL, onfree));
         verto_del(ev);
     }
 }
@@ -66,7 +72,14 @@ int
 do_test(verto_ev_ctx *ctx)
 {
     callcount = 0;
-    idle = verto_add_idle(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL);
-    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, idle ? 100 : 1));
+
+    if (!(verto_get_supported_types(ctx) & VERTO_EV_TYPE_IDLE)) {
+        printf("WARNING: Idle not supported!\n");
+        verto_break(ctx);
+        return 0;
+    }
+
+    assert(verto_add_idle(ctx, VERTO_EV_FLAG_PERSIST, cb));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100));
     return 0;
 }

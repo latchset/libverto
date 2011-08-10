@@ -31,6 +31,7 @@
 #define EXITCODE 17
 
 static int exitstatus;
+static int freed;
 
 void
 exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
@@ -39,8 +40,18 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
         printf("ERROR: Child event never fired!\n");
         retval = 1;
     }
+    if (!freed) {
+        printf("ERROR: On free never fired!\n");
+        retval = 1;
+    }
 
     verto_break(ctx);
+}
+
+void
+onfree(verto_ev_ctx *ctx, verto_ev *ev)
+{
+    freed = 1;
 }
 
 void
@@ -53,8 +64,14 @@ int
 do_test(verto_ev_ctx *ctx)
 {
     pid_t pid;
-
     exitstatus = 0;
+    freed = 0;
+
+    if (!(verto_get_supported_types(ctx) & VERTO_EV_TYPE_CHILD)) {
+        printf("WARNING: Child not supported!\n");
+        verto_break(ctx);
+        return 0;
+    }
 
     pid = fork();
     if (pid < 0)
@@ -64,16 +81,11 @@ do_test(verto_ev_ctx *ctx)
         exit(EXITCODE);
     }
 
-    verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, NULL, 100);
-
     /* Persist makes no sense for children events */
-    assert(!verto_add_child(ctx, VERTO_EV_FLAG_PERSIST, cb, NULL, pid));
-
-    if (!verto_add_child(ctx, VERTO_EV_FLAG_NONE, cb, NULL, pid)) {
-        printf("WARNING: Child not supported!\n");
-        usleep(100000);
-        waitpid(pid, &exitstatus, 0);
-    }
+    assert(!verto_add_child(ctx, VERTO_EV_FLAG_PERSIST, cb, pid));
+    assert(verto_set_private(verto_add_child(ctx, VERTO_EV_FLAG_NONE,
+                                             cb, pid), NULL, onfree));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100));
 
     return 0;
 }
