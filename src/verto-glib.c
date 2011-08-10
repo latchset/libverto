@@ -100,10 +100,22 @@ glib_ctx_run_once(void *lp)
     g_main_context_iteration(((glib_ev_ctx*) lp)->context, TRUE);
 }
 
+static gboolean
+break_callback(gpointer loop)
+{
+    g_main_loop_quit(loop);
+    return FALSE;
+}
+
 static void
 glib_ctx_break(void *lp)
 {
-    g_main_loop_quit(((glib_ev_ctx*) lp)->loop);
+    GSource *src = g_timeout_source_new(0);
+    g_assert(src);
+    g_source_set_callback(src, break_callback, ((glib_ev_ctx*) lp)->loop, NULL);
+    g_source_set_priority(src, G_PRIORITY_HIGH);
+    g_assert(g_source_attach(src, ((glib_ev_ctx*) lp)->context) != 0);
+    g_source_unref(src);
 }
 
 static gboolean
