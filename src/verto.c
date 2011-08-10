@@ -590,8 +590,11 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
     if (signal == SIGCHLD)
         return NULL;
 #endif
-    if (callback == VERTO_SIG_IGN)
+    if (callback == VERTO_SIG_IGN) {
         callback = signal_ignore;
+        if (!(flags & VERTO_EV_FLAG_PERSIST))
+            return NULL;
+    }
     doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
 
