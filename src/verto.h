@@ -338,7 +338,8 @@ verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
  *
  * The free callback will be called in two cases:
  *   1. When the event is deleted (manually or automatically)
- *   2. When verto_set_private() is called subsequent times
+ *   2. When verto_set_private() is called again, unless
+ *      free is NULL.
  *
  * @see verto_get_private()
  * @param ev The verto_ev
