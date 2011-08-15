@@ -29,7 +29,8 @@
 
 #if GLIB_MAJOR_VERSION >= 2
 #if GLIB_MINOR_VERSION >= 29
-#ifndef WIN32 /* Not supported on Windows */
+#ifdef G_OS_UNIX /* Not supported on Windows */
+#include <glib-unix.h>
 #define HAS_SIGNAL VERTO_EV_TYPE_SIGNAL
 #endif
 #endif /* GLIB_MINOR_VERSION >= 29 */
@@ -180,7 +181,7 @@ glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
         case VERTO_EV_TYPE_SIGNAL:
 #if GLIB_MAJOR_VERSION >= 2
 #if GLIB_MINOR_VERSION >= 29
-#ifndef WIN32 /* Not supported on Windows */
+#ifdef G_OS_UNIX /* Not supported on Windows */
             gev->src = g_unix_signal_source_new(verto_get_signal(ev));
             break;
 #endif
