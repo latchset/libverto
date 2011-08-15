@@ -283,7 +283,7 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
     }
 
     closedir(dir);
-    return module != NULL;
+    return *module != NULL;
 }
 
 static int
