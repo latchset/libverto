@@ -33,7 +33,7 @@
 static int count;
 
 void
-exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
+exit_cb(verto_ctx *ctx, verto_ev *ev)
 {
     if ((pid_t) (uintptr_t) verto_get_private(ev) != 0)
         waitpid((pid_t) (uintptr_t) verto_get_private(ev), NULL, 0);
@@ -53,13 +53,13 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 }
 
 void
-cb(verto_ev_ctx *ctx, verto_ev *ev)
+cb(verto_ctx *ctx, verto_ev *ev)
 {
     count++;
 }
 
 int
-do_test(verto_ev_ctx *ctx)
+do_test(verto_ctx *ctx)
 {
     pid_t pid = 0;
     count = 0;

@@ -46,7 +46,7 @@ static char *MODULES[] = {
     NULL
 };
 
-int do_test(verto_ev_ctx *ctx);
+int do_test(verto_ctx *ctx);
 
 static int retval = 0;
 
@@ -54,7 +54,7 @@ int
 main(int argc, char **argv)
 {
     int i;
-    verto_ev_ctx *ctx;
+    verto_ctx *ctx;
 
     if (argc == 2) {
         MODULES[0] = argv[1];

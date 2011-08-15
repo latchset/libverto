@@ -32,7 +32,7 @@
 #define VERTO_MODULE_VERSION 1
 #define VERTO_MODULE_TABLE verto_module_table
 #define VERTO_MODULE(name, symb, types) \
-    static verto_ev_ctx_funcs name ## _funcs = { \
+    static verto_ctx_funcs name ## _funcs = { \
         name ## _ctx_free, \
         name ## _ctx_run, \
         name ## _ctx_run_once, \
@@ -49,15 +49,15 @@
         verto_default_ ## name, \
     };
 
-typedef verto_ev_ctx *(*verto_ev_ctx_constructor)();
+typedef verto_ctx *(*verto_ctx_constructor)();
 
 typedef struct {
     unsigned int vers;
     const char *name;
     const char *symb;
     verto_ev_type types;
-    verto_ev_ctx_constructor new_ctx;
-    verto_ev_ctx_constructor def_ctx;
+    verto_ctx_constructor new_ctx;
+    verto_ctx_constructor def_ctx;
 } verto_module;
 
 typedef struct {
@@ -67,10 +67,10 @@ typedef struct {
     void  (*ctx_break)(void *ctx);
     void *(*ctx_add)(void *ctx, const verto_ev *ev, verto_ev_flag *flags);
     void  (*ctx_del)(void *ctx, const verto_ev *ev, void *evpriv);
-} verto_ev_ctx_funcs;
+} verto_ctx_funcs;
 
 /**
- * Converts an existing implementation specific loop to a verto_ev_ctx.
+ * Converts an existing implementation specific loop to a verto_ctx.
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
@@ -84,7 +84,7 @@ typedef struct {
         verto_convert_funcs(&name ## _funcs, &VERTO_MODULE_TABLE, priv)
 
 /**
- * Converts an existing implementation specific loop to a verto_ev_ctx.
+ * Converts an existing implementation specific loop to a verto_ctx.
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
@@ -98,8 +98,8 @@ typedef struct {
  * @param priv The context private to store
  * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
  */
-verto_ev_ctx *
-verto_convert_funcs(const verto_ev_ctx_funcs *funcs,
+verto_ctx *
+verto_convert_funcs(const verto_ctx_funcs *funcs,
                     const verto_module *module,
                     void *priv);
 

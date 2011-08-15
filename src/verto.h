@@ -39,7 +39,7 @@ typedef int verto_proc_status;
 
 #define VERTO_SIG_IGN ((verto_callback *) 1)
 
-typedef struct _verto_ev_ctx verto_ev_ctx;
+typedef struct _verto_ctx verto_ctx;
 typedef struct _verto_ev verto_ev;
 
 typedef enum {
@@ -62,7 +62,7 @@ typedef enum {
     _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_WRITE
 } verto_ev_flag;
 
-typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
+typedef void (verto_callback)(verto_ctx *ctx, verto_ev *ev);
 
 /**
  * Creates a new event context using an optionally specified implementation
@@ -74,7 +74,7 @@ typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
  * NAME is the implementation you wish to use.
  *
  * If you are a library, you should generally avoid creating event contexts
- * on your own but allow applications to pass in a verto_ev_ctx you can use.
+ * on your own but allow applications to pass in a verto_ctx you can use.
  *
  * There are two cases where you should use this function.  The first is
  * where you have a need to choose an implementation at run time, usually
@@ -120,7 +120,7 @@ typedef void (verto_callback)(verto_ev_ctx *ctx, verto_ev *ev);
  * @param reqtypes A bitwise or'd list of required event type features.
  * @return A new _ev_ctx, or NULL on error.  Call verto_free() when done.
  */
-verto_ev_ctx *
+verto_ctx *
 verto_new(const char *impl, verto_ev_type reqtypes);
 
 /**
@@ -131,7 +131,7 @@ verto_new(const char *impl, verto_ev_type reqtypes);
  * the underlying implementation (if such a function exists), it is NOT a
  * global singleton, but a per-implementation singleton. For this reason, you
  * must call verto_free() when you are done with this loop. Even after calling
- * verto_free() on the default verto_ev_ctx, you can safely call verto_default()
+ * verto_free() on the default verto_ctx, you can safely call verto_default()
  * again and receive a new reference to the same (internally default) loop.
  *
  * In all other respects, verto_default() acts exactly like verto_new().
@@ -142,7 +142,7 @@ verto_new(const char *impl, verto_ev_type reqtypes);
  * @param reqtypes A bitwise or'd list of required event type features.
  * @return The default _ev_ctx, or NULL on error.  Call verto_free() when done.
  */
-verto_ev_ctx *
+verto_ctx *
 verto_default(const char *impl, verto_ev_type reqtypes);
 
 /**
@@ -170,49 +170,49 @@ int
 verto_set_default(const char *impl, verto_ev_type reqtypes);
 
 /**
- * Frees a verto_ev_ctx.
+ * Frees a verto_ctx.
  *
- * When called on a default verto_ev_ctx, the reference will be freed but the
+ * When called on a default verto_ctx, the reference will be freed but the
  * internal default loop will still be available via another call to
  * verto_default().
  *
  * @see verto_new()
  * @see verto_default()
- * @param ctx The verto_ev_ctx to free.
+ * @param ctx The verto_ctx to free.
  */
 void
-verto_free(verto_ev_ctx *ctx);
+verto_free(verto_ctx *ctx);
 
 /**
- * Run the verto_ev_ctx forever, or at least until verto_break() is called.
+ * Run the verto_ctx forever, or at least until verto_break() is called.
  *
  * @see verto_break()
- * @param ctx The verto_ev_ctx to run.
+ * @param ctx The verto_ctx to run.
  */
 void
-verto_run(verto_ev_ctx *ctx);
+verto_run(verto_ctx *ctx);
 
 /**
- * Run the verto_ev_ctx once. May block.
+ * Run the verto_ctx once. May block.
  *
- * @param ctx The verto_ev_ctx to run once.
+ * @param ctx The verto_ctx to run once.
  */
 void
-verto_run_once(verto_ev_ctx *ctx);
+verto_run_once(verto_ctx *ctx);
 
 /**
- * Exits the currently running verto_ev_ctx.
+ * Exits the currently running verto_ctx.
  *
  * @see verto_run()
- * @param ctx The verto_ev_ctx to exit.
+ * @param ctx The verto_ctx to exit.
  */
 void
-verto_break(verto_ev_ctx *ctx);
+verto_break(verto_ctx *ctx);
 
 /**
  * Adds a callback executed when a file descriptor is ready to be read/written.
  *
- * All verto_ev events are automatically freed when their parent verto_ev_ctx is
+ * All verto_ev events are automatically freed when their parent verto_ctx is
  * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
  * provided, the event will repeat until verto_del() is called. If
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
@@ -224,20 +224,20 @@ verto_break(verto_ev_ctx *ctx);
  * results and may even crash.
  *
  * @see verto_del()
- * @param ctx The verto_ev_ctx which will fire the callback.
+ * @param ctx The verto_ctx which will fire the callback.
  * @param flags The flags to set (at least one VERTO_EV_FLAG_IO* required).
  * @param callback The callback to fire.
  * @param fd The file descriptor to watch for reads.
  * @return The verto_ev registered with the event context or NULL on error.
  */
 verto_ev *
-verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
              verto_callback *callback, int fd);
 
 /**
  * Adds a callback executed after a period of time.
  *
- * All verto_ev events are automatically freed when their parent verto_ev_ctx is
+ * All verto_ev events are automatically freed when their parent verto_ctx is
  * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
  * provided, the event will repeat until verto_del() is called. If
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
@@ -245,20 +245,20 @@ verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
  * to prevent the event from executing.
  *
  * @see verto_del()
- * @param ctx The verto_ev_ctx which will fire the callback.
+ * @param ctx The verto_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param interval Time period to wait before firing (in milliseconds).
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
-verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_timeout(verto_ctx *ctx, verto_ev_flag flags,
                   verto_callback *callback, time_t interval);
 
 /**
  * Adds a callback executed when there is nothing else to do.
  *
- * All verto_ev events are automatically freed when their parent verto_ev_ctx is
+ * All verto_ev events are automatically freed when their parent verto_ctx is
  * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
  * provided, the event will repeat until verto_del() is called. If
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
@@ -266,19 +266,19 @@ verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
  * to prevent the event from executing.
  *
  * @see verto_del()
- * @param ctx The verto_ev_ctx which will fire the callback.
+ * @param ctx The verto_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
-verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_idle(verto_ctx *ctx, verto_ev_flag flags,
                verto_callback *callback);
 
 /**
  * Adds a callback executed when a signal is received.
  *
- * All verto_ev events are automatically freed when their parent verto_ev_ctx is
+ * All verto_ev events are automatically freed when their parent verto_ctx is
  * freed. You do not need to free them manually. If VERTO_EV_FLAG_PERSIST is
  * provided, the event will repeat until verto_del() is called. If
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
@@ -303,14 +303,14 @@ verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
  * @see verto_add_child()
  * @see verto_repeat()
  * @see verto_del()
- * @param ctx The verto_ev_ctx which will fire the callback.
+ * @param ctx The verto_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param signal The signal to watch for.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
-verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_signal(verto_ctx *ctx, verto_ev_flag flags,
                  verto_callback *callback, int signal);
 
 /**
@@ -323,14 +323,14 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
  * prevent the callback from firing.
  *
  * @see verto_del()
- * @param ctx The verto_ev_ctx which will fire the callback.
+ * @param ctx The verto_ctx which will fire the callback.
  * @param flags The flags to set.
  * @param callback The callback to fire.
  * @param child The pid (POSIX) or handle (Win32) of the child to watch for.
  * @return The verto_ev registered with the event context.
  */
 verto_ev *
-verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
                 verto_callback *callback, verto_proc proc);
 
 /**
@@ -456,10 +456,10 @@ verto_del(verto_ev *ev);
 /**
  * Returns the event types supported by this implementation.
  *
- * @param ctx The verto_ev_ctx to query.
+ * @param ctx The verto_ctx to query.
  * @return The event types supported.
  */
 verto_ev_type
-verto_get_supported_types(verto_ev_ctx *ctx);
+verto_get_supported_types(verto_ctx *ctx);
 
 #endif /* VERTO_H_ */

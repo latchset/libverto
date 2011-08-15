@@ -244,17 +244,17 @@ glib_ctx_del(void *lp, const verto_ev *ev, void *evpriv)
 
 VERTO_MODULE(glib, g_main_context_default, VERTO_GLIB_SUPPORTED_TYPES);
 
-verto_ev_ctx *
+verto_ctx *
 verto_new_glib() {
     return verto_convert_glib(g_main_context_new(), NULL);
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_default_glib() {
     return verto_convert_glib(g_main_context_default(), NULL);
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
     return verto_convert(glib, glib_convert_(mc, ml));

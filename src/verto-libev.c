@@ -134,19 +134,19 @@ VERTO_MODULE(libev, ev_loop_new,
              VERTO_EV_TYPE_SIGNAL |
              VERTO_EV_TYPE_CHILD);
 
-verto_ev_ctx *
+verto_ctx *
 verto_new_libev()
 {
     return verto_convert_libev(ev_loop_new(EVFLAG_AUTO));
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_default_libev()
 {
     return verto_convert_libev(ev_default_loop(EVFLAG_AUTO));
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_convert_libev(struct ev_loop* loop)
 {
     return verto_convert(libev, loop);

@@ -125,13 +125,13 @@ VERTO_MODULE(tevent, g_main_context_default,
              VERTO_EV_TYPE_TIMEOUT |
              VERTO_EV_TYPE_SIGNAL);
 
-verto_ev_ctx *
+verto_ctx *
 verto_new_tevent()
 {
     return verto_convert_tevent(tevent_context_init(NULL));
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_default_tevent()
 {
     if (!defctx)
@@ -139,7 +139,7 @@ verto_default_tevent()
     return verto_convert_tevent(defctx);
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_convert_tevent(struct tevent_context *context)
 {
     tevent_ev_ctx *ctx;

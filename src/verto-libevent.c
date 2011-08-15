@@ -131,13 +131,13 @@ VERTO_MODULE(libevent, event_base_init,
              VERTO_EV_TYPE_TIMEOUT |
              VERTO_EV_TYPE_SIGNAL);
 
-verto_ev_ctx *
+verto_ctx *
 verto_new_libevent()
 {
     return verto_convert_libevent(event_base_new());
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_default_libevent()
 {
     if (!event_global_current_base_)
@@ -145,7 +145,7 @@ verto_default_libevent()
     return verto_convert_libevent(event_global_current_base_);
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_convert_libevent(struct event_base* base)
 {
     event_base_priority_init(base, 3);

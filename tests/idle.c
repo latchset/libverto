@@ -27,7 +27,7 @@
 static int callcount;
 
 void
-exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
+exit_cb(verto_ctx *ctx, verto_ev *ev)
 {
     retval = 1;
     switch (callcount) {
@@ -54,12 +54,12 @@ exit_cb(verto_ev_ctx *ctx, verto_ev *ev)
 }
 
 void
-onfree(verto_ev_ctx *ctx, verto_ev *ev) {
+onfree(verto_ctx *ctx, verto_ev *ev) {
     ++callcount;
 }
 
 void
-cb(verto_ev_ctx *ctx, verto_ev *ev)
+cb(verto_ctx *ctx, verto_ev *ev)
 {
     if (++callcount == 2) {
         assert(verto_set_private(verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb),
@@ -69,7 +69,7 @@ cb(verto_ev_ctx *ctx, verto_ev *ev)
 }
 
 int
-do_test(verto_ev_ctx *ctx)
+do_test(verto_ctx *ctx)
 {
     callcount = 0;
 

@@ -147,11 +147,11 @@ pdladdrmodname(void *addr, char **buf) {
 #define vnew(type) ((type*) malloc(sizeof(type)))
 #define vnew0(type) ((type*) memset(vnew(type), 0, sizeof(type)))
 
-struct _verto_ev_ctx {
+struct _verto_ctx {
     void *dll;
     void *modpriv;
     verto_ev_type types;
-    verto_ev_ctx_funcs funcs;
+    verto_ctx_funcs funcs;
     verto_ev *events;
 };
 
@@ -162,7 +162,7 @@ typedef struct {
 
 struct _verto_ev {
     verto_ev *next;
-    verto_ev_ctx *ctx;
+    verto_ctx *ctx;
     verto_ev_type type;
     verto_callback *callback;
     verto_callback *onfree;
@@ -371,7 +371,7 @@ load_module(const char *impl, verto_ev_type reqtypes, pdlmtype *dll,
 }
 
 static verto_ev *
-make_ev(verto_ev_ctx *ctx, verto_callback *callback,
+make_ev(verto_ctx *ctx, verto_callback *callback,
         verto_ev_type type, verto_ev_flag flags)
 {
     verto_ev *ev = NULL;
@@ -392,7 +392,7 @@ make_ev(verto_ev_ctx *ctx, verto_callback *callback,
 }
 
 static void
-push_ev(verto_ev_ctx *ctx, verto_ev *ev)
+push_ev(verto_ctx *ctx, verto_ev *ev)
 {
     if (!ctx || !ev)
         return;
@@ -415,16 +415,16 @@ remove_ev(verto_ev **origin, verto_ev *item)
 }
 
 static void
-signal_ignore(verto_ev_ctx *ctx, verto_ev *ev)
+signal_ignore(verto_ctx *ctx, verto_ev *ev)
 {
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_new(const char *impl, verto_ev_type reqtypes)
 {
     pdlmtype dll = NULL;
     const verto_module *module = NULL;
-    verto_ev_ctx *ctx = NULL;
+    verto_ctx *ctx = NULL;
 
     if (!load_module(impl, reqtypes, &dll, &module))
         return NULL;
@@ -438,12 +438,12 @@ verto_new(const char *impl, verto_ev_type reqtypes)
     return ctx;
 }
 
-verto_ev_ctx *
+verto_ctx *
 verto_default(const char *impl, verto_ev_type reqtypes)
 {
     pdlmtype dll = NULL;
     const verto_module *module = NULL;
-    verto_ev_ctx *ctx = NULL;
+    verto_ctx *ctx = NULL;
 
     if (!load_module(impl, reqtypes, &dll, &module))
         return NULL;
@@ -465,7 +465,7 @@ verto_set_default(const char *impl, verto_ev_type reqtypes)
 }
 
 void
-verto_free(verto_ev_ctx *ctx)
+verto_free(verto_ctx *ctx)
 {
 #ifndef WIN32
     int i;
@@ -520,7 +520,7 @@ verto_free(verto_ev_ctx *ctx)
 }
 
 void
-verto_run(verto_ev_ctx *ctx)
+verto_run(verto_ctx *ctx)
 {
     if (!ctx)
         return;
@@ -528,7 +528,7 @@ verto_run(verto_ev_ctx *ctx)
 }
 
 void
-verto_run_once(verto_ev_ctx *ctx)
+verto_run_once(verto_ctx *ctx)
 {
     if (!ctx)
         return;
@@ -536,7 +536,7 @@ verto_run_once(verto_ev_ctx *ctx)
 }
 
 void
-verto_break(verto_ev_ctx *ctx)
+verto_break(verto_ctx *ctx)
 {
     if (!ctx)
         return;
@@ -558,7 +558,7 @@ verto_break(verto_ev_ctx *ctx)
     return ev;
 
 verto_ev *
-verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
              verto_callback *callback, int fd)
 {
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
@@ -567,21 +567,21 @@ verto_add_io(verto_ev_ctx *ctx, verto_ev_flag flags,
 }
 
 verto_ev *
-verto_add_timeout(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_timeout(verto_ctx *ctx, verto_ev_flag flags,
                   verto_callback *callback, time_t interval)
 {
     doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 verto_ev *
-verto_add_idle(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_idle(verto_ctx *ctx, verto_ev_flag flags,
                verto_callback *callback)
 {
     doadd(, VERTO_EV_TYPE_IDLE);
 }
 
 verto_ev *
-verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_signal(verto_ctx *ctx, verto_ev_flag flags,
                  verto_callback *callback, int signal)
 {
     if (signal < 0)
@@ -599,7 +599,7 @@ verto_add_signal(verto_ev_ctx *ctx, verto_ev_flag flags,
 }
 
 verto_ev *
-verto_add_child(verto_ev_ctx *ctx, verto_ev_flag flags,
+verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
                 verto_callback *callback, verto_proc proc)
 {
     if (flags & VERTO_EV_FLAG_PERSIST) /* persist makes no sense */
@@ -703,24 +703,24 @@ verto_del(verto_ev *ev)
 }
 
 verto_ev_type
-verto_get_supported_types(verto_ev_ctx *ctx)
+verto_get_supported_types(verto_ctx *ctx)
 {
     return ctx->types;
 }
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
-verto_ev_ctx *
-verto_convert_funcs(const verto_ev_ctx_funcs *funcs,
+verto_ctx *
+verto_convert_funcs(const verto_ctx_funcs *funcs,
                const verto_module *module,
                void *ctx_private)
 {
-    verto_ev_ctx *ctx = NULL;
+    verto_ctx *ctx = NULL;
 
     if (!funcs || !module || !ctx_private)
         return NULL;
 
-    ctx = vnew0(verto_ev_ctx);
+    ctx = vnew0(verto_ctx);
     if (!ctx)
         return NULL;
 
