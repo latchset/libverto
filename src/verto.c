@@ -191,8 +191,7 @@ _vasprintf(char **strp, const char *fmt, va_list ap) {
     size = vsnprintf(NULL, 0, fmt, apc);
     va_end(apc);
 
-    *strp = malloc(size + 1);
-    if (!size)
+    if (size <= 0 || !(*strp = malloc(size + 1)))
         return -1;
 
     return vsnprintf(*strp, size + 1, fmt, ap);
