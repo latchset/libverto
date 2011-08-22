@@ -612,16 +612,15 @@ verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
     doadd(ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
 }
 
-int
+void
 verto_set_private(verto_ev *ev, void *priv, verto_callback *free)
 {
     if (!ev)
-        return 0;
+        return;
     if (ev->onfree && free)
         ev->onfree(ev->ctx, ev);
     ev->priv = priv;
     ev->onfree = free;
-    return 1;
 }
 
 void *

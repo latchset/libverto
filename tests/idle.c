@@ -62,8 +62,9 @@ void
 cb(verto_ctx *ctx, verto_ev *ev)
 {
     if (++callcount == 2) {
-        assert(verto_set_private(verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb),
-                                 NULL, onfree));
+        verto_ev *newev = verto_add_idle(ctx, VERTO_EV_FLAG_NONE, cb);
+        verto_set_private(newev, NULL, onfree);
+        assert(newev);
         verto_del(ev);
     }
 }

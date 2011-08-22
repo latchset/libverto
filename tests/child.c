@@ -64,6 +64,7 @@ int
 do_test(verto_ctx *ctx)
 {
     pid_t pid;
+    verto_ev *ev;
     exitstatus = 0;
     freed = 0;
 
@@ -83,9 +84,10 @@ do_test(verto_ctx *ctx)
 
     /* Persist makes no sense for children events */
     assert(!verto_add_child(ctx, VERTO_EV_FLAG_PERSIST, cb, pid));
-    assert(verto_set_private(verto_add_child(ctx, VERTO_EV_FLAG_NONE,
-                                             cb, pid), NULL, onfree));
     assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100));
+    ev = verto_add_child(ctx, VERTO_EV_FLAG_NONE, cb, pid);
+    assert(ev);
+    verto_set_private(ev, NULL, onfree);
 
     return 0;
 }

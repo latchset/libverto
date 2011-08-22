@@ -61,6 +61,7 @@ cb(verto_ctx *ctx, verto_ev *ev)
 int
 do_test(verto_ctx *ctx)
 {
+    verto_ev *ev;
     pid_t pid = 0;
     count = 0;
 
@@ -88,8 +89,8 @@ do_test(verto_ctx *ctx)
         exit(0);
     }
 
-    assert(verto_set_private(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE,
-                                               exit_cb, 100),
-                             (void *) (uintptr_t) pid, NULL));
+    ev = verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100);
+    assert(ev);
+    verto_set_private(ev, (void *) (uintptr_t) pid, NULL);
     return 0;
 }

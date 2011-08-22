@@ -345,9 +345,8 @@ verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
  * @param ev The verto_ev
  * @param priv The private value to store
  * @param free The callback used to free the data or NULL
- * @return 1 on success or 0 on failure
  */
-int
+void
 verto_set_private(verto_ev *ev, void *priv, verto_callback *free);
 
 /**
