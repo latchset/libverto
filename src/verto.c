@@ -255,15 +255,22 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
             int reqsym, verto_ev_type reqtypes, pdlmtype *dll,
             const verto_module **module)
 {
+    DIR *dir;
+    struct dirent *ent = NULL;
+
     *module = NULL;
-    DIR *dir = opendir(dirname);
+    dir = opendir(dirname);
     if (!dir)
         return 0;
 
-    struct dirent *ent = NULL;
+
     while ((ent = readdir(dir))) {
-        size_t flen = strlen(ent->d_name);
-        size_t slen = strlen(suffix);
+        char *tmp = NULL;
+        int success;
+        size_t flen, slen;
+
+        flen = strlen(ent->d_name);
+        slen = strlen(suffix);
 
         if (!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
             continue;
@@ -272,11 +279,10 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
         if (flen < slen || strcmp(ent->d_name + flen - slen, suffix))
             continue;
 
-        char *tmp = NULL;
         if (_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
             continue;
 
-        int success = do_load_file(tmp, reqsym, reqtypes, dll, module);
+        success = do_load_file(tmp, reqsym, reqtypes, dll, module);
         free(tmp);
         if (success)
             break;
@@ -395,10 +401,12 @@ make_ev(verto_ctx *ctx, verto_callback *callback,
 static void
 push_ev(verto_ctx *ctx, verto_ev *ev)
 {
+    verto_ev *tmp;
+
     if (!ctx || !ev)
         return;
 
-    verto_ev *tmp = ctx->events;
+    tmp = ctx->events;
     ctx->events = ev;
     ctx->events->next = tmp;
 }
@@ -572,8 +580,8 @@ verto_reinitialize(verto_ctx *ctx)
     }
 }
 
-#define doadd(set, type) \
-    verto_ev *ev = make_ev(ctx, callback, type, flags); \
+#define doadd(ev, set, type) \
+    ev = make_ev(ctx, callback, type, flags); \
     if (ev) { \
         set; \
         ev->actual = ev->flags; \
@@ -590,29 +598,36 @@ verto_ev *
 verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
              verto_callback *callback, int fd)
 {
+    verto_ev *ev;
+
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
         return NULL;
-    doadd(ev->option.fd = fd, VERTO_EV_TYPE_IO);
+
+    doadd(ev, ev->option.fd = fd, VERTO_EV_TYPE_IO);
 }
 
 verto_ev *
 verto_add_timeout(verto_ctx *ctx, verto_ev_flag flags,
                   verto_callback *callback, time_t interval)
 {
-    doadd(ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
+    verto_ev *ev;
+    doadd(ev, ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
 }
 
 verto_ev *
 verto_add_idle(verto_ctx *ctx, verto_ev_flag flags,
                verto_callback *callback)
 {
-    doadd(, VERTO_EV_TYPE_IDLE);
+    verto_ev *ev;
+    doadd(ev,, VERTO_EV_TYPE_IDLE);
 }
 
 verto_ev *
 verto_add_signal(verto_ctx *ctx, verto_ev_flag flags,
                  verto_callback *callback, int signal)
 {
+    verto_ev *ev;
+
     if (signal < 0)
         return NULL;
 #ifndef WIN32
@@ -624,13 +639,15 @@ verto_add_signal(verto_ctx *ctx, verto_ev_flag flags,
         if (!(flags & VERTO_EV_FLAG_PERSIST))
             return NULL;
     }
-    doadd(ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
+    doadd(ev, ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
 }
 
 verto_ev *
 verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
                 verto_callback *callback, verto_proc proc)
 {
+    verto_ev *ev;
+
     if (flags & VERTO_EV_FLAG_PERSIST) /* persist makes no sense */
         return NULL;
 #ifdef WIN32
@@ -639,7 +656,7 @@ verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
     if (proc < 1)
 #endif
         return NULL;
-    doadd(ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
+    doadd(ev, ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
 }
 
 void
