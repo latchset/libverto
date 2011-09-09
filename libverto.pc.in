@@ -6,5 +6,5 @@ exec_prefix=@exec_prefix@
 Name: libverto
 Description: Event loop abstraction interface
 Version: @VERSION@
-Libs: -L${libdir} -lverto
+Libs: -L${libdir} -lverto @LIBS@
 Cflags: -I${includedir}
