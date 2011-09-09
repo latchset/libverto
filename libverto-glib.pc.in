@@ -1,6 +1,7 @@
 prefix=@prefix@
 libdir=@libdir@
 includedir=@includedir@
+exec_prefix=@exec_prefix@
  
 Name: libverto-glib
 Description: Event loop abstraction interface (glib module)
