@@ -71,7 +71,7 @@ tevent_ctx_break(void *priv)
 }
 
 static void
-tevent_ctx_forked(void *priv)
+tevent_ctx_reinitialize(void *priv)
 {
     tevent_re_initialise(priv);
 }

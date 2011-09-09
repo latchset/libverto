@@ -120,7 +120,7 @@ glib_ctx_break(void *lp)
 }
 
 static void
-glib_ctx_forked(void *lp)
+glib_ctx_reinitialize(void *lp)
 {
 
 }

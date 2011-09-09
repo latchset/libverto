@@ -55,7 +55,7 @@ libev_ctx_break(void *ctx)
 }
 
 static void
-libev_ctx_forked(void *ctx)
+libev_ctx_reinitialize(void *ctx)
 {
     ev_loop_fork(ctx);
 }

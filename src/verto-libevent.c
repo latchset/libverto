@@ -62,7 +62,7 @@ libevent_ctx_break(void *priv)
 }
 
 static void
-libevent_ctx_forked(void *priv)
+libevent_ctx_reinitialize(void *priv)
 {
     event_reinit(priv);
 }

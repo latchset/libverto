@@ -543,7 +543,7 @@ verto_break(verto_ctx *ctx)
 }
 
 void
-verto_forked(verto_ctx *ctx)
+verto_reinitialize(verto_ctx *ctx)
 {
     verto_ev *tmp, *next;
     if (!ctx)
@@ -553,14 +553,14 @@ verto_forked(verto_ctx *ctx)
     for (tmp = ctx->events; tmp; tmp = next) {
         next = ctx->events->next;
 
-        if (tmp->flags & VERTO_EV_FLAG_FORKABLE)
+        if (tmp->flags & VERTO_EV_FLAG_REINITIABLE)
             ctx->funcs.ctx_del(ctx->modpriv, tmp, tmp->modpriv);
         else
             verto_del(tmp);
     }
 
     /* Reinit the loop */
-    ctx->funcs.ctx_forked(ctx->modpriv);
+    ctx->funcs.ctx_reinitialize(ctx->modpriv);
 
     /* Recreate events that were marked forkable */
     for (tmp = ctx->events; tmp; tmp = tmp->next) {
