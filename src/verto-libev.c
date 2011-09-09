@@ -55,6 +55,12 @@ libev_ctx_break(void *ctx)
 }
 
 static void
+libev_ctx_forked(void *ctx)
+{
+    ev_loop_fork(ctx);
+}
+
+static void
 libev_callback(EV_P_ ev_watcher *w, int revents)
 {
     if (verto_get_type(w->data) == VERTO_EV_TYPE_CHILD)

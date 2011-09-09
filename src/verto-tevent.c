@@ -70,6 +70,12 @@ tevent_ctx_break(void *priv)
     texit(priv) = 1;
 }
 
+static void
+tevent_ctx_forked(void *priv)
+{
+    tevent_re_initialise(priv);
+}
+
 #define definecb(type, ...) \
     static void tevent_ ## type ## _cb(struct tevent_context *c, \
                                        struct tevent_ ## type *e, \

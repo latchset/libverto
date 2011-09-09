@@ -119,6 +119,12 @@ glib_ctx_break(void *lp)
     g_source_unref(src);
 }
 
+static void
+glib_ctx_forked(void *lp)
+{
+
+}
+
 static gboolean
 glib_callback(gpointer data)
 {

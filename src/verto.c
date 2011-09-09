@@ -542,6 +542,34 @@ verto_break(verto_ctx *ctx)
     ctx->funcs.ctx_break(ctx->modpriv);
 }
 
+void
+verto_forked(verto_ctx *ctx)
+{
+    verto_ev *tmp, *next;
+    if (!ctx)
+        return;
+
+    /* Delete all events, but keep around the forkable ev structs */
+    for (tmp = ctx->events; tmp; tmp = next) {
+        next = ctx->events->next;
+
+        if (tmp->flags & VERTO_EV_FLAG_FORKABLE)
+            ctx->funcs.ctx_del(ctx->modpriv, tmp, tmp->modpriv);
+        else
+            verto_del(tmp);
+    }
+
+    /* Reinit the loop */
+    ctx->funcs.ctx_forked(ctx->modpriv);
+
+    /* Recreate events that were marked forkable */
+    for (tmp = ctx->events; tmp; tmp = tmp->next) {
+        tmp->actual = tmp->flags;
+        tmp->modpriv = ctx->funcs.ctx_add(ctx, tmp, &tmp->actual);
+        assert(tmp->modpriv);
+    }
+}
+
 #define doadd(set, type) \
     verto_ev *ev = make_ev(ctx, callback, type, flags); \
     if (ev) { \
