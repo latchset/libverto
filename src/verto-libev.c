@@ -118,14 +118,19 @@ libev_ctx_del(void *ctx, const verto_ev *ev, void *evpriv)
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_IO:
             ev_io_stop(ctx, evpriv);
+            break;
         case VERTO_EV_TYPE_TIMEOUT:
             ev_timer_stop(ctx, evpriv);
+            break;
         case VERTO_EV_TYPE_IDLE:
             ev_idle_stop(ctx, evpriv);
+            break;
         case VERTO_EV_TYPE_SIGNAL:
             ev_signal_stop(ctx, evpriv);
+            break;
         case VERTO_EV_TYPE_CHILD:
             ev_child_stop(ctx, evpriv);
+            break;
         default:
             break;
     }
