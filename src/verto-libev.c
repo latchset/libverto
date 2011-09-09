@@ -141,13 +141,13 @@ VERTO_MODULE(libev, ev_loop_new,
              VERTO_EV_TYPE_CHILD);
 
 verto_ctx *
-verto_new_libev()
+verto_new_libev(void)
 {
     return verto_convert_libev(ev_loop_new(EVFLAG_AUTO));
 }
 
 verto_ctx *
-verto_default_libev()
+verto_default_libev(void)
 {
     return verto_convert_libev(ev_default_loop(EVFLAG_AUTO));
 }

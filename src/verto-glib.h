@@ -28,8 +28,11 @@
 #include <verto.h>
 #include <glib.h>
 
-verto_ctx *verto_new_glib();
-verto_ctx *verto_default_glib();
+verto_ctx *
+verto_new_glib(void);
+
+verto_ctx *
+verto_default_glib(void);
 
 /**
  * mc == NULL, ml == NULL -- Use the default main loop
@@ -37,6 +40,7 @@ verto_ctx *verto_default_glib();
  * If mc is specified, a reference is stolen unless mc is the default loop.
  * A reference is always stolen for ml.
  */
-verto_ctx *verto_convert_glib(GMainContext *mc, GMainLoop *ml);
+verto_ctx *
+verto_convert_glib(GMainContext *mc, GMainLoop *ml);
 
 #endif /* VERTO_GLIB_H_ */

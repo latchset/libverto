@@ -46,7 +46,8 @@
 #ifdef WIN32
 #define pdlmsuffix ".dll"
 #define pdlmtype HMODULE
-#define pdlopenl(filename) LoadLibraryEx(filename, NULL, DONT_RESOLVE_DLL_REFERENCES)
+#define pdlopenl(filename) LoadLibraryEx(filename, NULL, \
+                                         DONT_RESOLVE_DLL_REFERENCES)
 #define pdlclose(module) FreeLibrary((pdlmtype) module)
 #define pdlsym(mod, sym) ((void *) GetProcAddress(mod, sym))
 
@@ -57,7 +58,8 @@ pdlreopen(const char *filename, pdlmtype module)
     return LoadLibrary(filename);
 }
 
-static char *pdlerror() {
+static char *
+pdlerror(void) {
     char *amsg;
     LPTSTR msg;
 

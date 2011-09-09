@@ -132,13 +132,13 @@ VERTO_MODULE(tevent, g_main_context_default,
              VERTO_EV_TYPE_SIGNAL);
 
 verto_ctx *
-verto_new_tevent()
+verto_new_tevent(void)
 {
     return verto_convert_tevent(tevent_context_init(NULL));
 }
 
 verto_ctx *
-verto_default_tevent()
+verto_default_tevent(void)
 {
     if (!defctx)
         defctx = tevent_context_init(NULL);

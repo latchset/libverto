@@ -138,13 +138,13 @@ VERTO_MODULE(libevent, event_base_init,
              VERTO_EV_TYPE_SIGNAL);
 
 verto_ctx *
-verto_new_libevent()
+verto_new_libevent(void)
 {
     return verto_convert_libevent(event_base_new());
 }
 
 verto_ctx *
-verto_default_libevent()
+verto_default_libevent(void)
 {
     if (!event_global_current_base_)
         event_global_current_base_ = event_init();
