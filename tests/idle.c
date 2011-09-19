@@ -81,6 +81,6 @@ do_test(verto_ctx *ctx)
     }
 
     assert(verto_add_idle(ctx, VERTO_EV_FLAG_PERSIST, cb));
-    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100));
+    assert(verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 1000));
     return 0;
 }

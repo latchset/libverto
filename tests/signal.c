@@ -89,7 +89,7 @@ do_test(verto_ctx *ctx)
         exit(0);
     }
 
-    ev = verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 100);
+    ev = verto_add_timeout(ctx, VERTO_EV_FLAG_NONE, exit_cb, 1000);
     assert(ev);
     verto_set_private(ev, (void *) (uintptr_t) pid, NULL);
     return 0;
