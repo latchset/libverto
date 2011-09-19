@@ -19,4 +19,4 @@ endif
 check_PROGRAMS = timeout idle child signal read write
 EXTRA_DIST     = test.h abi
 TESTS = abi $(check_PROGRAMS)
-TESTS_ENVIRONMENT = env LIBVERTO=$(abs_top_builddir)/src/.libs/libverto.so*
+TESTS_ENVIRONMENT = env LIBVERTO=$(abs_top_builddir)/src/.libs/libverto.a
