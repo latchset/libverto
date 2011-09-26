@@ -8,3 +8,4 @@ Description: Event loop abstraction interface (libevent module)
 Version: @VERSION@
 Libs: -L${libdir} -lverto-libevent
 Cflags: -I${includedir}
+Requires.private: libverto
