@@ -1,1 +1,10 @@
-Sample readme file for libverto project.
+                                   libverto
+===============================================================================
+
+libverto exists to solve an important problem: many applications and libraries
+are unable to write asynchronous code because they are unable to pick an event
+loop. This is particularly true of libraries who want to be useful to many
+applications who use loops that do not integrate with one another or which
+use home-grown loops. libverto provides a loop-neutral async api which allows
+the library to expose asynchronous interfaces and offload the choice of the
+main loop to the application.
