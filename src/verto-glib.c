@@ -27,7 +27,10 @@
 #include <verto-glib.h>
 #include <verto-module.h>
 
-#if GLIB_MAJOR_VERSION >= 2
+/* While glib has signal support in >=2.29, it does not support many
+   common signals (like USR*). Therefore, signal support is disabled
+   until they support them (should be soonish) */
+#if GLIB_MAJOR_VERSION >= 999
 #if GLIB_MINOR_VERSION >= 29
 #ifdef G_OS_UNIX /* Not supported on Windows */
 #include <glib-unix.h>
@@ -185,7 +188,10 @@ glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
             *flags &= ~VERTO_EV_FLAG_PERSIST; /* Child events don't persist */
             break;
         case VERTO_EV_TYPE_SIGNAL:
-#if GLIB_MAJOR_VERSION >= 2
+/* While glib has signal support in >=2.29, it does not support many
+   common signals (like USR*). Therefore, signal support is disabled
+   until they support them (should be soonish) */
+#if GLIB_MAJOR_VERSION >= 999
 #if GLIB_MINOR_VERSION >= 29
 #ifdef G_OS_UNIX /* Not supported on Windows */
             gev->src = g_unix_signal_source_new(verto_get_signal(ev));
