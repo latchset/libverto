@@ -208,17 +208,69 @@ int_asprintf(char **strp, const char *fmt, ...) {
     return size;
 }
 
+static char *
+int_get_table_name(const char *suffix)
+{
+    char *tmp;
+
+    tmp = malloc(strlen(suffix) + strlen(__str(VERTO_MODULE_TABLE())) + 1);
+    if (tmp) {
+        strcpy(tmp, __str(VERTO_MODULE_TABLE()));
+        strcat(tmp, suffix);
+    }
+    return tmp;
+}
+
+static char *
+int_get_table_name_from_filename(const char *filename)
+{
+    char *bn = NULL, *tmp = NULL;
+
+    if (!filename)
+        return NULL;
+
+    tmp = strdup(filename);
+    if (!tmp)
+        return NULL;
+
+    bn = basename(tmp);
+    if (bn)
+        bn = strdup(bn);
+    free(tmp);
+    if (!bn)
+        return NULL;
+
+    tmp = strchr(bn, '-');
+    if (tmp) {
+        if (strchr(tmp+1, '.')) {
+            *strchr(tmp+1, '.') = '\0';
+            tmp = int_get_table_name(tmp + 1);
+        } else
+            tmp = NULL;
+    }
+
+    free(bn);
+    return tmp;
+}
+
 static int
 do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
              pdlmtype *dll, const verto_module **module)
 {
+    char *tblname;
+
+    tblname = int_get_table_name_from_filename(filename);
+    if (!tblname)
+        return 0;
+
     *dll = pdlopenl(filename);
     if (!*dll) {
         /* printf("%s -- %s\n", filename, pdlerror()); */
+        free(tblname);
         return 0;
     }
 
-    *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
+    *module = (verto_module*) pdlsym(*dll, tblname);
     if (!*module || (*module)->vers != VERTO_MODULE_VERSION
             || !(*module)->new_ctx || !(*module)->def_ctx)
         goto error;
@@ -233,17 +285,21 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
 
     /* Re-open in execution mode */
     *dll = pdlreopen(filename, *dll);
-    if (!*dll)
+    if (!*dll) {
+        free(tblname);
         return 0;
+    }
 
     /* Get the module struct again */
-    *module = (verto_module*) pdlsym(*dll, __str(VERTO_MODULE_TABLE));
+    *module = (verto_module*) pdlsym(*dll, tblname);
     if (!*module)
         goto error;
 
+    free(tblname);
     return 1;
 
     error:
+        free(tblname);
         pdlclose(*dll);
         return 0;
 }

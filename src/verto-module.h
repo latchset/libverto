@@ -30,7 +30,7 @@
 #include <verto.h>
 
 #define VERTO_MODULE_VERSION 1
-#define VERTO_MODULE_TABLE verto_module_table
+#define VERTO_MODULE_TABLE(name) verto_module_table_ ## name
 #define VERTO_MODULE(name, symb, types) \
     static verto_ctx_funcs name ## _funcs = { \
         name ## _ctx_free, \
@@ -41,7 +41,7 @@
         name ## _ctx_add, \
         name ## _ctx_del \
     }; \
-    verto_module VERTO_MODULE_TABLE = { \
+    verto_module VERTO_MODULE_TABLE(name) = { \
         VERTO_MODULE_VERSION, \
         # name, \
         # symb, \
@@ -83,7 +83,7 @@ typedef struct {
  * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
  */
 #define verto_convert(name, priv) \
-        verto_convert_funcs(&name ## _funcs, &VERTO_MODULE_TABLE, priv)
+        verto_convert_funcs(&name ## _funcs, &VERTO_MODULE_TABLE(name), priv)
 
 /**
  * Converts an existing implementation specific loop to a verto_ctx.
