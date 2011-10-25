@@ -27,6 +27,9 @@
 #include <errno.h>
 
 #include <verto-libevent.h>
+#define VERTO_MODULE_TYPES
+typedef struct event_base verto_mod_ctx;
+typedef struct event verto_mod_ev;
 #include <verto-module.h>
 
 #include <event2/event_compat.h>
@@ -37,34 +40,34 @@
 extern struct event_base *event_global_current_base_;
 
 static void
-libevent_ctx_free(void *priv)
+libevent_ctx_free(verto_mod_ctx *ctx)
 {
-    if (priv != event_global_current_base_)
-        event_base_free(priv);
+    if (ctx != event_global_current_base_)
+        event_base_free(ctx);
 }
 
 static void
-libevent_ctx_run(void *priv)
+libevent_ctx_run(verto_mod_ctx *ctx)
 {
-    event_base_dispatch(priv);
+    event_base_dispatch(ctx);
 }
 
 static void
-libevent_ctx_run_once(void *priv)
+libevent_ctx_run_once(verto_mod_ctx *ctx)
 {
-    event_base_loop(priv, EVLOOP_ONCE);
+    event_base_loop(ctx, EVLOOP_ONCE);
 }
 
 static void
-libevent_ctx_break(void *priv)
+libevent_ctx_break(verto_mod_ctx *ctx)
 {
-    event_base_loopbreak(priv);
+    event_base_loopbreak(ctx);
 }
 
 static void
-libevent_ctx_reinitialize(void *priv)
+libevent_ctx_reinitialize(verto_mod_ctx *ctx)
 {
-    event_reinit(priv);
+    event_reinit(ctx);
 }
 
 static void
@@ -73,8 +76,8 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
     verto_fire(data);
 }
 
-static void *
-libevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
+static verto_mod_ev *
+libevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
     struct event *priv = NULL;
     struct timeval *timeout = NULL;
@@ -126,7 +129,7 @@ libevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 }
 
 static void
-libevent_ctx_del(void *ctx, const verto_ev *ev, void *evpriv)
+libevent_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 {
     event_del(evpriv);
     event_free(evpriv);

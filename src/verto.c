@@ -149,7 +149,7 @@ pdladdrmodname(void *addr, char **buf) {
 
 struct _verto_ctx {
     void *dll;
-    void *modpriv;
+    verto_mod_ctx *ctx;
     verto_ev_type types;
     verto_ctx_funcs funcs;
     verto_ev *events;
@@ -167,7 +167,7 @@ struct _verto_ev {
     verto_callback *callback;
     verto_callback *onfree;
     void *priv;
-    void *modpriv;
+    verto_mod_ev *ev;
     verto_ev_flag flags;
     verto_ev_flag actual;
     size_t depth;
@@ -554,7 +554,7 @@ verto_free(verto_ctx *ctx)
         verto_del(ctx->events);
 
     /* Free the private */
-    ctx->funcs.ctx_free(ctx->modpriv);
+    ctx->funcs.ctx_free(ctx->ctx);
 
     /* Unload the module */
     if (ctx->dll) {
@@ -596,7 +596,7 @@ verto_run(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run(ctx->modpriv);
+    ctx->funcs.ctx_run(ctx->ctx);
 }
 
 void
@@ -604,7 +604,7 @@ verto_run_once(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run_once(ctx->modpriv);
+    ctx->funcs.ctx_run_once(ctx->ctx);
 }
 
 void
@@ -612,7 +612,7 @@ verto_break(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_break(ctx->modpriv);
+    ctx->funcs.ctx_break(ctx->ctx);
 }
 
 void
@@ -627,19 +627,19 @@ verto_reinitialize(verto_ctx *ctx)
         next = tmp->next;
 
         if (tmp->flags & VERTO_EV_FLAG_REINITIABLE)
-            ctx->funcs.ctx_del(ctx->modpriv, tmp, tmp->modpriv);
+            ctx->funcs.ctx_del(ctx->ctx, tmp, tmp->ev);
         else
             verto_del(tmp);
     }
 
     /* Reinit the loop */
-    ctx->funcs.ctx_reinitialize(ctx->modpriv);
+    ctx->funcs.ctx_reinitialize(ctx->ctx);
 
     /* Recreate events that were marked forkable */
     for (tmp = ctx->events; tmp; tmp = tmp->next) {
         tmp->actual = tmp->flags;
-        tmp->modpriv = ctx->funcs.ctx_add(ctx->modpriv, tmp, &tmp->actual);
-        assert(tmp->modpriv);
+        tmp->ev = ctx->funcs.ctx_add(ctx->ctx, tmp, &tmp->actual);
+        assert(tmp->ev);
     }
 }
 
@@ -648,14 +648,13 @@ verto_reinitialize(verto_ctx *ctx)
     if (ev) { \
         set; \
         ev->actual = ev->flags; \
-        ev->modpriv = ctx->funcs.ctx_add(ctx->modpriv, ev, &ev->actual); \
-        if (!ev->modpriv) { \
+        ev->ev = ctx->funcs.ctx_add(ctx->ctx, ev, &ev->actual); \
+        if (!ev->ev) { \
             free(ev); \
             return NULL; \
         } \
         push_ev(ctx, ev); \
-    } \
-    return ev;
+    }
 
 verto_ev *
 verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
@@ -667,6 +666,7 @@ verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
         return NULL;
 
     doadd(ev, ev->option.fd = fd, VERTO_EV_TYPE_IO);
+    return ev;
 }
 
 verto_ev *
@@ -675,6 +675,7 @@ verto_add_timeout(verto_ctx *ctx, verto_ev_flag flags,
 {
     verto_ev *ev;
     doadd(ev, ev->option.interval = interval, VERTO_EV_TYPE_TIMEOUT);
+    return ev;
 }
 
 verto_ev *
@@ -683,6 +684,7 @@ verto_add_idle(verto_ctx *ctx, verto_ev_flag flags,
 {
     verto_ev *ev;
     doadd(ev,, VERTO_EV_TYPE_IDLE);
+    return ev;
 }
 
 verto_ev *
@@ -703,6 +705,7 @@ verto_add_signal(verto_ctx *ctx, verto_ev_flag flags,
             return NULL;
     }
     doadd(ev, ev->option.signal = signal, VERTO_EV_TYPE_SIGNAL);
+    return ev;
 }
 
 verto_ev *
@@ -720,6 +723,7 @@ verto_add_child(verto_ctx *ctx, verto_ev_flag flags,
 #endif
         return NULL;
     doadd(ev, ev->option.child.proc = proc, VERTO_EV_TYPE_CHILD);
+    return ev;
 }
 
 void
@@ -805,7 +809,7 @@ verto_del(verto_ev *ev)
 
     if (ev->onfree)
         ev->onfree(ev->ctx, ev);
-    ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
+    ev->ctx->funcs.ctx_del(ev->ctx->ctx, ev, ev->ev);
     remove_ev(&(ev->ctx->events), ev);
     free(ev);
 }
@@ -832,7 +836,7 @@ verto_convert_funcs(const verto_ctx_funcs *funcs,
     if (!ctx)
         return NULL;
 
-    ctx->modpriv = ctx_private;
+    ctx->ctx = ctx_private;
     ctx->funcs = *funcs;
     ctx->types = module->types;
 
@@ -856,10 +860,10 @@ verto_fire(verto_ev *ev)
             verto_del(ev);
         else if (!ev->actual & VERTO_EV_FLAG_PERSIST) {
             ev->actual = ev->flags;
-            priv = ev->ctx->funcs.ctx_add(ev->ctx->modpriv, ev, &ev->actual);
+            priv = ev->ctx->funcs.ctx_add(ev->ctx->ctx, ev, &ev->actual);
             assert(priv); /* TODO: create an error callback */
-            ev->ctx->funcs.ctx_del(ev->ctx->modpriv, ev, ev->modpriv);
-            ev->modpriv = priv;
+            ev->ctx->funcs.ctx_del(ev->ctx->ctx, ev, ev->ev);
+            ev->ev = priv;
         }
     }
 }

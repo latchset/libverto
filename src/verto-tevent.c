@@ -27,10 +27,14 @@
 #include <errno.h>
 
 #include <verto-tevent.h>
-#include <verto-module.h>
 
-#define tctx(p) ((tevent_ev_ctx *) p)->ctx
-#define texit(p) ((tevent_ev_ctx *) p)->exit
+#define VERTO_MODULE_TYPES
+typedef struct {
+    struct tevent_context *ctx;
+    char exit;
+} verto_mod_ctx;
+typedef void verto_mod_ev;
+#include <verto-module.h>
 
 #ifndef TEVENT_FD_ERROR
 #define TEVENT_FD_ERROR 0
@@ -38,42 +42,37 @@
 
 static struct tevent_context *defctx;
 
-typedef struct {
-    struct tevent_context *ctx;
-    char exit;
-} tevent_ev_ctx;
-
 static void
-tevent_ctx_free(void *priv)
+tevent_ctx_free(verto_mod_ctx *ctx)
 {
-    if (priv != defctx)
-        talloc_free(priv);
+    if (ctx->ctx != defctx)
+        talloc_free(ctx);
 }
 
 static void
-tevent_ctx_run(void *priv)
+tevent_ctx_run(verto_mod_ctx *ctx)
 {
-    while (!texit(priv))
-        tevent_loop_once(tctx(priv));
-    texit(priv) = 0;
+    while (!ctx->exit)
+        tevent_loop_once(ctx->ctx);
+    ctx->exit = 0;
 }
 
 static void
-tevent_ctx_run_once(void *priv)
+tevent_ctx_run_once(verto_mod_ctx *ctx)
 {
-    tevent_loop_once(priv);
+    tevent_loop_once(ctx->ctx);
 }
 
 static void
-tevent_ctx_break(void *priv)
+tevent_ctx_break(verto_mod_ctx *ctx)
 {
-    texit(priv) = 1;
+    ctx->exit = 1;
 }
 
 static void
-tevent_ctx_reinitialize(void *priv)
+tevent_ctx_reinitialize(verto_mod_ctx *ctx)
 {
-    tevent_re_initialise(priv);
+    tevent_re_initialise(ctx->ctx);
 }
 
 #define definecb(type, ...) \
@@ -87,8 +86,8 @@ definecb(fd, uint16_t fl)
 definecb(timer, struct timeval ct)
 definecb(signal, int signum, int count, void *siginfo)
 
-static void *
-tevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
+static verto_mod_ev *
+tevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 
 {
     time_t interval;
@@ -102,16 +101,16 @@ tevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
             teventflags |= TEVENT_FD_READ;
         if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
             teventflags |= TEVENT_FD_WRITE;
-        return tevent_add_fd(tctx(ctx), tctx(ctx), verto_get_fd(ev),
+        return tevent_add_fd(ctx->ctx, ctx->ctx, verto_get_fd(ev),
                              teventflags, tevent_fd_cb, (void *) ev);
     case VERTO_EV_TYPE_TIMEOUT:
         *flags &= ~VERTO_EV_FLAG_PERSIST; /* Timeout events don't persist */
         interval = verto_get_interval(ev);
         tv = tevent_timeval_current_ofs(interval / 1000, interval % 1000 * 1000);
-        return tevent_add_timer(tctx(ctx), tctx(ctx), tv,
+        return tevent_add_timer(ctx->ctx, ctx->ctx, tv,
                                 tevent_timer_cb, (void *) ev);
     case VERTO_EV_TYPE_SIGNAL:
-        return tevent_add_signal(tctx(ctx), tctx(ctx), verto_get_signal(ev),
+        return tevent_add_signal(ctx->ctx, ctx->ctx, verto_get_signal(ev),
                                  0, tevent_signal_cb, (void *) ev);
     case VERTO_EV_TYPE_IDLE:
     case VERTO_EV_TYPE_CHILD:
@@ -121,7 +120,7 @@ tevent_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 }
 
 static void
-tevent_ctx_del(void *priv, const verto_ev *ev, void *evpriv)
+tevent_ctx_del(verto_mod_ctx *priv, const verto_ev *ev, verto_mod_ev *evpriv)
 {
     talloc_free(evpriv);
 }
@@ -148,9 +147,9 @@ verto_default_tevent(void)
 verto_ctx *
 verto_convert_tevent(struct tevent_context *context)
 {
-    tevent_ev_ctx *ctx;
+    verto_mod_ctx *ctx;
 
-    ctx = talloc_zero(NULL, tevent_ev_ctx);
+    ctx = talloc_zero(NULL, verto_mod_ctx);
     if (ctx) {
         talloc_set_name_const(ctx, "libverto");
         ctx->ctx = context;

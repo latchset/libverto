@@ -25,6 +25,15 @@
 #include <errno.h>
 
 #include <verto-glib.h>
+#define VERTO_MODULE_TYPES
+typedef struct {
+    GMainContext *context;
+    GMainLoop *loop;
+} verto_mod_ctx;
+typedef struct {
+    GSource *src;
+    GIOChannel *chan;
+} verto_mod_ev;
 #include <verto-module.h>
 
 /* While glib has signal support in >=2.29, it does not support many
@@ -48,22 +57,12 @@
                                     | HAS_SIGNAL \
                                     | VERTO_EV_TYPE_CHILD)
 
-typedef struct {
-    GMainContext *context;
-    GMainLoop *loop;
-} glib_ev_ctx;
-
-typedef struct {
-    GSource *src;
-    GIOChannel *chan;
-} glib_ev;
-
 static void *
 glib_convert_(GMainContext *mc, GMainLoop *ml)
 {
-    glib_ev_ctx *l = NULL;
+    verto_mod_ctx *l = NULL;
 
-    l = g_new0(glib_ev_ctx, 1);
+    l = g_new0(verto_mod_ctx, 1);
     if (l) {
         if (mc) {
             /* Steal references */
@@ -85,23 +84,23 @@ glib_convert_(GMainContext *mc, GMainLoop *ml)
 }
 
 static void
-glib_ctx_free(void *lp)
+glib_ctx_free(verto_mod_ctx *ctx)
 {
-    g_main_loop_unref(((glib_ev_ctx*) lp)->loop);
-    g_main_context_unref(((glib_ev_ctx*) lp)->context);
-    g_free(lp);
+    g_main_loop_unref(ctx->loop);
+    g_main_context_unref(ctx->context);
+    g_free(ctx);
 }
 
 static void
-glib_ctx_run(void *lp)
+glib_ctx_run(verto_mod_ctx *ctx)
 {
-    g_main_loop_run(((glib_ev_ctx*) lp)->loop);
+    g_main_loop_run(ctx->loop);
 }
 
 static void
-glib_ctx_run_once(void *lp)
+glib_ctx_run_once(verto_mod_ctx *ctx)
 {
-    g_main_context_iteration(((glib_ev_ctx*) lp)->context, TRUE);
+    g_main_context_iteration(ctx->context, TRUE);
 }
 
 static gboolean
@@ -112,18 +111,18 @@ break_callback(gpointer loop)
 }
 
 static void
-glib_ctx_break(void *lp)
+glib_ctx_break(verto_mod_ctx *ctx)
 {
     GSource *src = g_timeout_source_new(0);
     g_assert(src);
-    g_source_set_callback(src, break_callback, ((glib_ev_ctx*) lp)->loop, NULL);
+    g_source_set_callback(src, break_callback, ctx->loop, NULL);
     g_source_set_priority(src, G_PRIORITY_HIGH);
-    g_assert(g_source_attach(src, ((glib_ev_ctx*) lp)->context) != 0);
+    g_assert(g_source_attach(src, ctx->context) != 0);
     g_source_unref(src);
 }
 
 static void
-glib_ctx_reinitialize(void *lp)
+glib_ctx_reinitialize(verto_mod_ctx *ctx)
 {
 
 }
@@ -136,7 +135,7 @@ glib_callback(gpointer data)
     return persists;
 }
 
-gboolean
+static gboolean
 glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
 {
     return glib_callback(data);
@@ -149,14 +148,14 @@ glib_callback_child(GPid pid, gint status, gpointer data)
     verto_fire(data);
 }
 
-static void *
-glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
+static verto_mod_ev *
+glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
-    glib_ev *gev = NULL;
+    verto_mod_ev *gev = NULL;
     GIOCondition cond = 0;
     verto_ev_type type = verto_get_type(ev);
 
-    gev = g_new0(glib_ev, 1);
+    gev = g_new0(verto_mod_ev, 1);
     if (!gev)
         return NULL;
 
@@ -221,7 +220,7 @@ glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
         g_source_set_priority(gev->src, G_PRIORITY_LOW);
 
     g_source_set_can_recurse(gev->src, FALSE);
-    if (g_source_attach(gev->src, ((glib_ev_ctx*) ctx)->context) == 0)
+    if (g_source_attach(gev->src, ctx->context) == 0)
         goto error;
 
     return gev;
@@ -240,16 +239,16 @@ glib_ctx_add(void *ctx, const verto_ev *ev, verto_ev_flag *flags)
 }
 
 static void
-glib_ctx_del(void *lp, const verto_ev *ev, void *evpriv)
+glib_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 {
     if (!ev)
         return;
 
-    if (((glib_ev *) evpriv)->chan)
-        g_io_channel_unref(((glib_ev *) evpriv)->chan);
-    if (((glib_ev *) evpriv)->src) {
-        g_source_destroy(((glib_ev *) evpriv)->src);
-        g_source_unref(((glib_ev *) evpriv)->src);
+    if (evpriv->chan)
+        g_io_channel_unref(evpriv->chan);
+    if (evpriv->src) {
+        g_source_destroy(evpriv->src);
+        g_source_unref(evpriv->src);
     }
 
     g_free(evpriv);

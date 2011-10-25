@@ -29,6 +29,12 @@
 
 #include <verto.h>
 
+#ifndef VERTO_MODULE_TYPES
+#define VERTO_MODULE_TYPES
+typedef void verto_mod_ctx;
+typedef void verto_mod_ev;
+#endif
+
 #define VERTO_MODULE_VERSION 1
 #define VERTO_MODULE_TABLE(name) verto_module_table_ ## name
 #define VERTO_MODULE(name, symb, types) \
@@ -62,13 +68,15 @@ typedef struct {
 } verto_module;
 
 typedef struct {
-    void  (*ctx_free)(void *ctx);
-    void  (*ctx_run)(void *ctx);
-    void  (*ctx_run_once)(void *ctx);
-    void  (*ctx_break)(void *ctx);
-    void  (*ctx_reinitialize)(void *ctx);
-    void *(*ctx_add)(void *ctx, const verto_ev *ev, verto_ev_flag *flags);
-    void  (*ctx_del)(void *ctx, const verto_ev *ev, void *evpriv);
+    void (*ctx_free)(verto_mod_ctx *ctx);
+    void (*ctx_run)(verto_mod_ctx *ctx);
+    void (*ctx_run_once)(verto_mod_ctx *ctx);
+    void (*ctx_break)(verto_mod_ctx *ctx);
+    void (*ctx_reinitialize)(verto_mod_ctx *ctx);
+    verto_mod_ev *(*ctx_add)(verto_mod_ctx *ctx, const verto_ev *ev,
+                             verto_ev_flag *flags);
+    void (*ctx_del)(verto_mod_ctx *ctx, const verto_ev *ev,
+                    verto_mod_ev *modev);
 } verto_ctx_funcs;
 
 /**
@@ -103,7 +111,7 @@ typedef struct {
 verto_ctx *
 verto_convert_funcs(const verto_ctx_funcs *funcs,
                     const verto_module *module,
-                    void *priv);
+                    verto_mod_ctx *priv);
 
 /**
  * Calls the callback of the verto_ev and then frees it via verto_del().
