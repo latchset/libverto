@@ -96,7 +96,7 @@ typedef struct {
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
- * implementation.
+ * implementation if it was not already set.
  *
  * @param name The name of the module (unquoted)
  * @param deflt Whether the ctx is the default context or not
@@ -113,6 +113,10 @@ typedef struct {
  * function is generally used directly only when an application is attempting
  * to expose a home-grown event loop to verto.
  *
+ * If deflt is non-zero and a default ctx was already defined for this module
+ * and ctx is not NULL, than ctx will be free'd and the previously defined
+ * default will be returned.
+ *
  * If ctx is non-NULL, than the pre-existing verto_mod_ctx will be converted to
  * to a verto_ctx; if deflt is non-zero than this verto_mod_ctx will also be
  * marked as the default loop for this process. If ctx is NULL, than the
@@ -124,7 +128,7 @@ typedef struct {
  *
  * This function also sets the internal default implementation so that future
  * calls to verto_new(NULL) or verto_default(NULL) will use this specific
- * implementation.
+ * implementation if it was not already set.
  *
  * @param name The name of the module (unquoted)
  * @param ctx The context private to store
