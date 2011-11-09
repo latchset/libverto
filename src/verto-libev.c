@@ -32,6 +32,18 @@ typedef struct ev_loop verto_mod_ctx;
 typedef ev_watcher verto_mod_ev;
 #include <verto-module.h>
 
+static verto_mod_ctx *
+libev_ctx_new(void)
+{
+    return ev_loop_new(EVFLAG_AUTO);
+}
+
+static verto_mod_ctx *
+libev_ctx_default(void)
+{
+    return ev_default_loop(EVFLAG_AUTO);
+}
+
 static void
 libev_ctx_free(verto_mod_ctx *ctx)
 {
@@ -156,19 +168,7 @@ VERTO_MODULE(libev, ev_loop_new,
              VERTO_EV_TYPE_CHILD);
 
 verto_ctx *
-verto_new_libev(void)
-{
-    return verto_convert_libev(ev_loop_new(EVFLAG_AUTO));
-}
-
-verto_ctx *
-verto_default_libev(void)
-{
-    return verto_convert_libev(ev_default_loop(EVFLAG_AUTO));
-}
-
-verto_ctx *
 verto_convert_libev(struct ev_loop* loop)
 {
-    return verto_convert(libev, loop);
+    return verto_convert(libev, 0, loop);
 }

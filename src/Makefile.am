@@ -1,4 +1,9 @@
-AM_LDFLAGS = -export-symbols-regex '^verto_'
+LIBVERTO_CURRENT=1
+LIBVERTO_REVISION=0
+LIBVERTO_AGE=0
+
+AM_LDFLAGS = -export-symbols-regex '^verto_' -version-info \
+               $(LIBVERTO_CURRENT):$(LIBVERTO_REVISION):$(LIBVERTO_AGE)
 AM_CFLAGS = -Wall -Wdeclaration-after-statement
 
 include_HEADERS      = verto.h verto-module.h

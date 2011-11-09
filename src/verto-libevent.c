@@ -39,11 +39,30 @@ typedef struct event verto_mod_ev;
  * sense of "global." */
 extern struct event_base *event_global_current_base_;
 
+static verto_mod_ctx *
+libevent_ctx_new(void)
+{
+    struct event_base *eb;
+
+    eb = event_base_new();
+    event_base_priority_init(eb, 3);
+    return eb;
+}
+
+static verto_mod_ctx *
+libevent_ctx_default(void)
+{
+    if (!event_global_current_base_)
+        event_global_current_base_ = event_init();
+
+    event_base_priority_init(event_global_current_base_, 3);
+    return event_global_current_base_;
+}
+
 static void
 libevent_ctx_free(verto_mod_ctx *ctx)
 {
-    if (ctx != event_global_current_base_)
-        event_base_free(ctx);
+    event_base_free(ctx);
 }
 
 static void
@@ -141,22 +160,8 @@ VERTO_MODULE(libevent, event_base_init,
              VERTO_EV_TYPE_SIGNAL);
 
 verto_ctx *
-verto_new_libevent(void)
-{
-    return verto_convert_libevent(event_base_new());
-}
-
-verto_ctx *
-verto_default_libevent(void)
-{
-    if (!event_global_current_base_)
-        event_global_current_base_ = event_init();
-    return verto_convert_libevent(event_global_current_base_);
-}
-
-verto_ctx *
 verto_convert_libevent(struct event_base* base)
 {
     event_base_priority_init(base, 3);
-    return verto_convert(libevent, base);
+    return verto_convert(libevent, 0, base);
 }

@@ -144,15 +144,14 @@ pdladdrmodname(void *addr, char **buf) {
 
 #define  _str(s) # s
 #define __str(s) _str(s)
-#define vnew(type) ((type*) malloc(sizeof(type)))
-#define vnew0(type) ((type*) memset(vnew(type), 0, sizeof(type)))
 
 struct _verto_ctx {
-    void *dll;
+    size_t ref;
     verto_mod_ctx *ctx;
-    verto_ev_type types;
-    verto_ctx_funcs funcs;
+    const verto_module *module;
     verto_ev *events;
+    int deflt;
+    int exit;
 };
 
 typedef struct {
@@ -180,7 +179,16 @@ struct _verto_ev {
     } option;
 };
 
-const verto_module *defmodule;
+typedef struct _module_record module_record;
+struct _module_record {
+    module_record *next;
+    const verto_module *module;
+    pdlmtype *dll;
+    char *filename;
+    verto_ctx *defctx;
+};
+
+static module_record *loaded_modules;
 
 static int
 int_vasprintf(char **strp, const char *fmt, va_list ap) {
@@ -255,64 +263,94 @@ int_get_table_name_from_filename(const char *filename)
 
 static int
 do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
-             pdlmtype *dll, const verto_module **module)
+             module_record **record)
 {
-    char *tblname;
+    char *tblname = NULL;
+    module_record *tmp;
 
-    tblname = int_get_table_name_from_filename(filename);
-    if (!tblname)
-        return 0;
-
-    *dll = pdlopenl(filename);
-    if (!*dll) {
-        /* printf("%s -- %s\n", filename, pdlerror()); */
-        free(tblname);
-        return 0;
+    /* Check the loaded modules to see if we already loaded one */
+    for (*record = loaded_modules ; *record ; *record = (*record)->next) {
+        if (!strcmp((*record)->filename, filename))
+            return 1;
     }
 
-    *module = (verto_module*) pdlsym(*dll, tblname);
-    if (!*module || (*module)->vers != VERTO_MODULE_VERSION
-            || !(*module)->new_ctx || !(*module)->def_ctx)
+    /* Create our module record */
+    tmp = *record =  malloc(sizeof(module_record));
+    if (!tmp)
+        return 0;
+    memset(tmp, 0, sizeof(module_record));
+    tmp->filename = strdup(filename);
+    if (!tmp->filename)
+        goto error;
+
+    /* Get the name of the module struct in the library */
+    tblname = int_get_table_name_from_filename(filename);
+    if (!tblname)
+        goto error;
+
+    /* Open the module library */
+    tmp->dll = pdlopenl(filename);
+    if (!tmp->dll) {
+        /* printf("%s -- %s\n", filename, pdlerror()); */
+        goto error;
+    }
+
+    /* Get the module struct */
+    tmp->module = (verto_module*) pdlsym(tmp->dll, tblname);
+    if (!tmp->module || tmp->module->vers != VERTO_MODULE_VERSION
+            || !tmp->module->funcs
+            || !tmp->module->funcs->ctx_new)
         goto error;
 
     /* Check to make sure that we have our required symbol if reqsym == true */
-    if ((*module)->symb && reqsym && !pdlsymlinked(NULL, (*module)->symb))
+    if (tmp->module->symb && reqsym
+            && !pdlsymlinked(NULL, tmp->module->symb))
         goto error;
 
     /* Check to make sure that this module supports our required features */
-    if (reqtypes != VERTO_EV_TYPE_NONE && ((*module)->types & reqtypes) != reqtypes)
+    if (reqtypes != VERTO_EV_TYPE_NONE
+            && (tmp->module->types & reqtypes) != reqtypes)
         goto error;
 
     /* Re-open in execution mode */
-    *dll = pdlreopen(filename, *dll);
-    if (!*dll) {
-        free(tblname);
-        return 0;
-    }
+    tmp->dll = pdlreopen(filename, tmp->dll);
+    if (!tmp->dll)
+        goto error;
 
     /* Get the module struct again */
-    *module = (verto_module*) pdlsym(*dll, tblname);
-    if (!*module)
+    tmp->module = (verto_module*) pdlsym(tmp->dll, tblname);
+    if (!tmp->module)
         goto error;
+
+    /* Append the new module to the end of the loaded modules */
+    for (tmp = loaded_modules ; tmp && tmp->next; tmp = tmp->next)
+        continue;
+    if (tmp)
+        tmp->next = *record;
+    else
+        loaded_modules = *record;
 
     free(tblname);
     return 1;
 
     error:
         free(tblname);
-        pdlclose(*dll);
+        free(tmp->filename);
+        if (tmp->dll)
+            pdlclose(tmp->dll);
+        free(tmp);
+        *record = NULL;
         return 0;
 }
 
 static int
 do_load_dir(const char *dirname, const char *prefix, const char *suffix,
-            int reqsym, verto_ev_type reqtypes, pdlmtype *dll,
-            const verto_module **module)
+            int reqsym, verto_ev_type reqtypes, module_record **record)
 {
     DIR *dir;
     struct dirent *ent = NULL;
 
-    *module = NULL;
+    *record = NULL;
     dir = opendir(dirname);
     if (!dir)
         return 0;
@@ -336,27 +374,41 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
         if (int_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
             continue;
 
-        success = do_load_file(tmp, reqsym, reqtypes, dll, module);
+        success = do_load_file(tmp, reqsym, reqtypes, record);
         free(tmp);
         if (success)
             break;
-        *module = NULL;
+        *record = NULL;
     }
 
     closedir(dir);
-    return *module != NULL;
+    return *record != NULL;
 }
 
 static int
-load_module(const char *impl, verto_ev_type reqtypes, pdlmtype *dll,
-            const verto_module **module)
+load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
 {
     int success = 0;
     char *prefix = NULL;
     char *suffix = NULL;
     char *tmp = NULL;
 
-    if (!pdladdrmodname(verto_convert_funcs, &prefix))
+    /* Check the cache */
+    if (impl) {
+        for (*record = loaded_modules ; *record ; *record = (*record)->next) {
+            if ((strchr(impl, '/') && !strcmp(impl, (*record)->filename))
+                    || !strcmp(impl, (*record)->module->name))
+                return 1;
+        }
+    } else if (loaded_modules) {
+        for (*record = loaded_modules ; *record ; *record = (*record)->next) {
+            if (reqtypes == VERTO_EV_TYPE_NONE
+                    || ((*record)->module->types & reqtypes) == reqtypes)
+                return 1;
+        }
+    }
+
+    if (!pdladdrmodname(verto_convert_module, &prefix))
         return 0;
 
     /* Example output:
@@ -382,56 +434,45 @@ load_module(const char *impl, verto_ev_type reqtypes, pdlmtype *dll,
 
     if (impl) {
         /* Try to do a load by the path */
-        if (strchr(impl, '/'))
-            success = do_load_file(impl, 0, reqtypes, dll, module);
+        if (!success && strchr(impl, '/'))
+            success = do_load_file(impl, 0, reqtypes, record);
         if (!success) {
             /* Try to do a load by the name */
             tmp = NULL;
             if (int_asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
-                success = do_load_file(tmp, 0, reqtypes, dll, module);
+                success = do_load_file(tmp, 0, reqtypes, record);
                 free(tmp);
             }
         }
     } else {
-        /* First, try the default implementation (aka 'the cache')*/
-        *dll = NULL;
-        *module = NULL;
+        /* NULL was passed, so we will use the dirname of
+         * the prefix to try and find any possible plugins */
+        tmp = strdup(prefix);
+        if (tmp) {
+            char *dname = strdup(dirname(tmp));
+            free(tmp);
 
-        if (defmodule != NULL
-                && (reqtypes == VERTO_EV_TYPE_NONE
-                        || (defmodule->types & reqtypes) == reqtypes))
-            *module = defmodule;
+            tmp = strdup(basename(prefix));
+            free(prefix);
+            prefix = tmp;
 
-        if (!(success = *module != NULL)) {
-            /* NULL was passed, so we will use the dirname of
-             * the prefix to try and find any possible plugins */
-            tmp = strdup(prefix);
-            if (tmp) {
-                char *dname = strdup(dirname(tmp));
-                free(tmp);
-
-                tmp = strdup(basename(prefix));
-                free(prefix);
-                prefix = tmp;
-
-                if (dname && prefix) {
-                    /* Attempt to find a module we are already linked to */
-                    success = do_load_dir(dname, prefix, suffix, 1, reqtypes,
-                                          dll, module);
-                    if (!success) {
+            if (dname && prefix) {
+                /* Attempt to find a module we are already linked to */
+                success = do_load_dir(dname, prefix, suffix, 1, reqtypes,
+                                      record);
+                if (!success) {
 #ifdef DEFAULT_LIBRARY
-                        /* Attempt to find the default module */
-                        success = load_module(DEFAULT_LIBRARY, reqtypes, dll, module);
-                        if (!success)
+                    /* Attempt to find the default module */
+                    success = load_module(DEFAULT_LIBRARY, reqtypes, record);
+                    if (!success)
 #endif /* DEFAULT_LIBRARY */
-                        /* Attempt to load any plugin (we're desperate) */
-                        success = do_load_dir(dname, prefix, suffix, 0,
-                                              reqtypes, dll, module);
-                    }
+                    /* Attempt to load any plugin (we're desperate) */
+                    success = do_load_dir(dname, prefix, suffix, 0,
+                                          reqtypes, record);
                 }
-
-                free(dname);
             }
+
+            free(dname);
         }
     }
 
@@ -494,59 +535,44 @@ signal_ignore(verto_ctx *ctx, verto_ev *ev)
 verto_ctx *
 verto_new(const char *impl, verto_ev_type reqtypes)
 {
-    pdlmtype dll = NULL;
-    const verto_module *module = NULL;
-    verto_ctx *ctx = NULL;
+    module_record *mr = NULL;
 
-    if (!load_module(impl, reqtypes, &dll, &module))
+    if (!load_module(impl, reqtypes, &mr))
         return NULL;
 
-    ctx = module->new_ctx();
-    if (!ctx && dll)
-        pdlclose(dll);
-    if (ctx && defmodule != module)
-        ctx->dll = dll;
-
-    return ctx;
+    return verto_convert_module(mr->module, 0, NULL);
 }
 
 verto_ctx *
 verto_default(const char *impl, verto_ev_type reqtypes)
 {
-    pdlmtype dll = NULL;
-    const verto_module *module = NULL;
-    verto_ctx *ctx = NULL;
+    module_record *mr = NULL;
 
-    if (!load_module(impl, reqtypes, &dll, &module))
+    if (!load_module(impl, reqtypes, &mr))
         return NULL;
 
-    ctx = module->def_ctx();
-    if (!ctx && dll)
-        pdlclose(dll);
-    if (ctx && defmodule != module)
-        ctx->dll = dll;
-
-    return ctx;
+    return verto_convert_module(mr->module, 1, NULL);
 }
 
 int
 verto_set_default(const char *impl, verto_ev_type reqtypes)
 {
-    pdlmtype dll = NULL; /* we will leak the dll */
-    return (!defmodule && impl && load_module(impl, reqtypes, &dll, &defmodule));
+    module_record *mr;
+
+    if (loaded_modules || !impl)
+        return 0;
+
+    return load_module(impl, reqtypes, &mr);
 }
 
 void
 verto_free(verto_ctx *ctx)
 {
-#ifndef WIN32
-    int i;
-    sigset_t old;
-    sigset_t block;
-    struct sigaction act;
-#endif
-
     if (!ctx)
+        return;
+
+    ctx->ref = ctx->ref > 0 ? ctx->ref - 1 : 0;
+    if (ctx->ref > 0)
         return;
 
     /* Cancel all pending events */
@@ -554,39 +580,8 @@ verto_free(verto_ctx *ctx)
         verto_del(ctx->events);
 
     /* Free the private */
-    ctx->funcs.ctx_free(ctx->ctx);
-
-    /* Unload the module */
-    if (ctx->dll) {
-        /* If dlclose() unmaps memory that is registered as a signal handler
-         * we have to remove that handler otherwise if that signal is fired
-         * we jump into unmapped memory. So we loop through and test each
-         * handler to see if it is in unmapped memory.  If it is, we set it
-         * back to the default handler. Lastly, if a signal were to fire it
-         * could be a race condition. So we mask out all signals during this
-         * process.
-         */
-#ifndef WIN32
-        sigfillset(&block);
-        sigprocmask(SIG_SETMASK, &block, &old);
-#endif
-        pdlclose(ctx->dll);
-#ifndef WIN32
-        for (i=1 ; i < NSIG ; i++) {
-            if (sigaction(i, NULL, &act) == 0) {
-                if (act.sa_flags & SA_SIGINFO) {
-                    if (!pdladdrmodname(act.sa_sigaction, NULL))
-                        signal(i, SIG_DFL);
-                } else if (act.sa_handler != SIG_DFL
-                        && act.sa_handler != SIG_IGN) {
-                    if (!pdladdrmodname(act.sa_handler, NULL))
-                        signal(i, SIG_DFL);
-                }
-            }
-        }
-        sigprocmask(SIG_SETMASK, &old, NULL);
-#endif
-    }
+    if (!ctx->deflt || !ctx->module->funcs->ctx_default)
+        ctx->module->funcs->ctx_free(ctx->ctx);
 
     free(ctx);
 }
@@ -596,7 +591,14 @@ verto_run(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run(ctx->ctx);
+
+    if (ctx->module->funcs->ctx_break && ctx->module->funcs->ctx_run)
+        ctx->module->funcs->ctx_run(ctx->ctx);
+    else {
+        while (!ctx->exit)
+            ctx->module->funcs->ctx_run_once(ctx->ctx);
+        ctx->exit = 0;
+    }
 }
 
 void
@@ -604,7 +606,7 @@ verto_run_once(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_run_once(ctx->ctx);
+    ctx->module->funcs->ctx_run_once(ctx->ctx);
 }
 
 void
@@ -612,7 +614,11 @@ verto_break(verto_ctx *ctx)
 {
     if (!ctx)
         return;
-    ctx->funcs.ctx_break(ctx->ctx);
+
+    if (ctx->module->funcs->ctx_break && ctx->module->funcs->ctx_run)
+        ctx->module->funcs->ctx_break(ctx->ctx);
+    else
+        ctx->exit = 1;
 }
 
 void
@@ -627,18 +633,19 @@ verto_reinitialize(verto_ctx *ctx)
         next = tmp->next;
 
         if (tmp->flags & VERTO_EV_FLAG_REINITIABLE)
-            ctx->funcs.ctx_del(ctx->ctx, tmp, tmp->ev);
+            ctx->module->funcs->ctx_del(ctx->ctx, tmp, tmp->ev);
         else
             verto_del(tmp);
     }
 
     /* Reinit the loop */
-    ctx->funcs.ctx_reinitialize(ctx->ctx);
+    if (ctx->module->funcs->ctx_reinitialize)
+        ctx->module->funcs->ctx_reinitialize(ctx->ctx);
 
     /* Recreate events that were marked forkable */
     for (tmp = ctx->events; tmp; tmp = tmp->next) {
         tmp->actual = tmp->flags;
-        tmp->ev = ctx->funcs.ctx_add(ctx->ctx, tmp, &tmp->actual);
+        tmp->ev = ctx->module->funcs->ctx_add(ctx->ctx, tmp, &tmp->actual);
         assert(tmp->ev);
     }
 }
@@ -648,7 +655,7 @@ verto_reinitialize(verto_ctx *ctx)
     if (ev) { \
         set; \
         ev->actual = ev->flags; \
-        ev->ev = ctx->funcs.ctx_add(ctx->ctx, ev, &ev->actual); \
+        ev->ev = ctx->module->funcs->ctx_add(ctx->ctx, ev, &ev->actual); \
         if (!ev->ev) { \
             free(ev); \
             return NULL; \
@@ -809,7 +816,7 @@ verto_del(verto_ev *ev)
 
     if (ev->onfree)
         ev->onfree(ev->ctx, ev);
-    ev->ctx->funcs.ctx_del(ev->ctx->ctx, ev, ev->ev);
+    ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
     remove_ev(&(ev->ctx->events), ev);
     free(ev);
 }
@@ -817,33 +824,84 @@ verto_del(verto_ev *ev)
 verto_ev_type
 verto_get_supported_types(verto_ctx *ctx)
 {
-    return ctx->types;
+    return ctx->module->types;
 }
 
 /*** THE FOLLOWING ARE FOR IMPLEMENTATION MODULES ONLY ***/
 
 verto_ctx *
-verto_convert_funcs(const verto_ctx_funcs *funcs,
-               const verto_module *module,
-               void *ctx_private)
+verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
 {
     verto_ctx *ctx = NULL;
+    module_record *mr;
 
-    if (!funcs || !module || !ctx_private)
-        return NULL;
+    if (!module)
+        goto error;
 
-    ctx = vnew0(verto_ctx);
+    if (deflt) {
+        for (mr = loaded_modules ; mr ; mr = mr->next) {
+            if (mr->module == module && mr->defctx) {
+                if (mctx)
+                    module->funcs->ctx_free(mctx);
+                mr->defctx->ref++;
+                return mr->defctx;
+            }
+        }
+    }
+
+    if (!mctx) {
+        mctx = deflt
+                    ? (module->funcs->ctx_default
+                        ? module->funcs->ctx_default()
+                        : module->funcs->ctx_new())
+                    : module->funcs->ctx_new();
+        if (!mctx)
+            goto error;
+    }
+
+    ctx = malloc(sizeof(verto_ctx));
     if (!ctx)
-        return NULL;
+        goto error;
+    memset(ctx, 0, sizeof(verto_ctx));
 
-    ctx->ctx = ctx_private;
-    ctx->funcs = *funcs;
-    ctx->types = module->types;
+    ctx->ref = 1;
+    ctx->ctx = mctx;
+    ctx->module = module;
+    ctx->deflt = deflt;
 
-    if (!defmodule)
-        defmodule = module;
+    if (deflt) {
+        module_record **tmp = &loaded_modules;
+
+        for (mr = loaded_modules ; mr ; mr = mr->next) {
+            if (mr->module == module) {
+                assert(mr->defctx == NULL);
+                mr->defctx = ctx;
+                return ctx;
+            }
+
+            if (!mr->next) {
+                tmp = &mr->next;
+                break;
+            }
+        }
+
+        *tmp = malloc(sizeof(module_record));
+        if (!*tmp) {
+            free(ctx);
+            goto error;
+        }
+
+        memset(*tmp, 0, sizeof(module_record));
+        (*tmp)->defctx = ctx;
+        (*tmp)->module = module;
+    }
 
     return ctx;
+
+error:
+    if (mctx)
+        module->funcs->ctx_free(mctx);
+    return NULL;
 }
 
 void
@@ -860,9 +918,9 @@ verto_fire(verto_ev *ev)
             verto_del(ev);
         else if (!ev->actual & VERTO_EV_FLAG_PERSIST) {
             ev->actual = ev->flags;
-            priv = ev->ctx->funcs.ctx_add(ev->ctx->ctx, ev, &ev->actual);
+            priv = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
             assert(priv); /* TODO: create an error callback */
-            ev->ctx->funcs.ctx_del(ev->ctx->ctx, ev, ev->ev);
+            ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
             ev->ev = priv;
         }
     }

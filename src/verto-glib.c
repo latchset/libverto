@@ -83,6 +83,16 @@ glib_convert_(GMainContext *mc, GMainLoop *ml)
     return l;
 }
 
+static verto_mod_ctx *
+glib_ctx_new(void) {
+    return glib_convert_(g_main_context_new(), NULL);
+}
+
+static verto_mod_ctx *
+glib_ctx_default(void) {
+    return glib_convert_(g_main_context_default(), NULL);
+}
+
 static void
 glib_ctx_free(verto_mod_ctx *ctx)
 {
@@ -119,12 +129,6 @@ glib_ctx_break(verto_mod_ctx *ctx)
     g_source_set_priority(src, G_PRIORITY_HIGH);
     g_assert(g_source_attach(src, ctx->context) != 0);
     g_source_unref(src);
-}
-
-static void
-glib_ctx_reinitialize(verto_mod_ctx *ctx)
-{
-
 }
 
 static gboolean
@@ -254,20 +258,11 @@ glib_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
     g_free(evpriv);
 }
 
+#define glib_ctx_reinitialize NULL
 VERTO_MODULE(glib, g_main_context_default, VERTO_GLIB_SUPPORTED_TYPES);
-
-verto_ctx *
-verto_new_glib(void) {
-    return verto_convert_glib(g_main_context_new(), NULL);
-}
-
-verto_ctx *
-verto_default_glib(void) {
-    return verto_convert_glib(g_main_context_default(), NULL);
-}
 
 verto_ctx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml)
 {
-    return verto_convert(glib, glib_convert_(mc, ml));
+    return verto_convert(glib, 0, glib_convert_(mc, ml));
 }
