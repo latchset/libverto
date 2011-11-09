@@ -35,104 +35,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <dlfcn.h>
-#endif
-
 #include <verto-module.h>
-
-#ifdef WIN32
-#define pdlmtype HMODULE
-#define pdlopenl(filename) LoadLibraryEx(filename, NULL, \
-                                         DONT_RESOLVE_DLL_REFERENCES)
-#define pdlclose(module) FreeLibrary((pdlmtype) module)
-#define pdlsym(mod, sym) ((void *) GetProcAddress(mod, sym))
-
-static pdlmtype
-pdlreopen(const char *filename, pdlmtype module)
-{
-    pdlclose(module);
-    return LoadLibrary(filename);
-}
-
-static char *
-pdlerror(void) {
-    char *amsg;
-    LPTSTR msg;
-
-    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER
-                      | FORMAT_MESSAGE_FROM_SYSTEM
-                      | FORMAT_MESSAGE_IGNORE_INSERTS,
-                  NULL, GetLastError(),
-                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                  (LPTSTR) &msg, 0, NULL);
-    amsg = strdup((const char*) msg);
-    LocalFree(msg);
-    return amsg;
-}
-
-static bool
-pdlsymlinked(const char *modn, const char *symb) {
-    return (GetProcAddress(GetModuleHandle(modn), symb) != NULL ||
-            GetProcAddress(GetModuleHandle(NULL), symb) != NULL);
-}
-
-static bool
-pdladdrmodname(void *addr, char **buf) {
-    MEMORY_BASIC_INFORMATION info;
-    HMODULE mod;
-    char modname[MAX_PATH];
-
-    if (!VirtualQuery(addr, &info, sizeof(info)))
-        return false;
-    mod = (HMODULE) info.AllocationBase;
-
-    if (!GetModuleFileNameA(mod, modname, MAX_PATH))
-        return false;
-
-    if (buf) {
-        *buf = strdup(modname);
-        if (!buf)
-            return false;
-    }
-
-    return true;
-}
-#else
-#define pdlmtype void *
-#define pdlopenl(filename) dlopen(filename, RTLD_LAZY | RTLD_LOCAL)
-#define pdlclose(module) dlclose((pdlmtype) module)
-#define pdlreopen(filename, module) module
-#define pdlsym(mod, sym) dlsym(mod, sym)
-#define pdlerror() strdup(dlerror())
-
-static int
-pdlsymlinked(const char* modn, const char* symb)
-{
-    void* mod = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL);
-    if (mod) {
-        void* sym = dlsym(mod, symb);
-        dlclose(mod);
-        return sym != NULL;
-    }
-    return 0;
-}
-
-static int
-pdladdrmodname(void *addr, char **buf) {
-    Dl_info dlinfo;
-    if (!dladdr(addr, &dlinfo))
-        return 0;
-    if (buf) {
-        *buf = strdup(dlinfo.dli_fname);
-        if (!*buf)
-            return 0;
-    }
-    return 1;
-}
-#endif
+#include "module.h"
 
 #define  _str(s) # s
 #define __str(s) _str(s)
@@ -175,7 +79,7 @@ typedef struct _module_record module_record;
 struct _module_record {
     module_record *next;
     const verto_module *module;
-    pdlmtype *dll;
+    void *dll;
     char *filename;
     verto_ctx *defctx;
 };
@@ -253,12 +157,50 @@ int_get_table_name_from_filename(const char *filename)
     return tmp;
 }
 
+typedef struct {
+    int reqsym;
+    verto_ev_type reqtypes;
+} shouldload_data;
+
+static int
+shouldload(void *symb, void *misc, char **err)
+{
+    verto_module *table = (verto_module*) symb;
+    shouldload_data *data = (shouldload_data*) misc;
+
+    /* Make sure we have the proper version */
+    if (table->vers != VERTO_MODULE_VERSION) {
+        if (err)
+            *err = strdup("Invalid module version!");
+        return 0;
+    }
+
+    /* Check to make sure that we have our required symbol if reqsym == true */
+    if (table->symb && data->reqsym
+            && !module_symbol_is_present(NULL, table->symb)) {
+        if (err)
+            int_asprintf(err, "Symbol not found: %s!", table->symb);
+        return 0;
+    }
+
+    /* Check to make sure that this module supports our required features */
+    if (data->reqtypes != VERTO_EV_TYPE_NONE
+            && (table->types & data->reqtypes) != data->reqtypes) {
+        if (err)
+            *err = strdup("Module does not support required features!");
+        return 0;
+    }
+
+    return 1;
+}
+
 static int
 do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
              module_record **record)
 {
-    char *tblname = NULL;
+    char *tblname = NULL, *error = NULL;
     module_record *tmp;
+    shouldload_data data  = { reqsym, reqtypes };
 
     /* Check the loaded modules to see if we already loaded one */
     for (*record = loaded_modules ; *record ; *record = (*record)->next) {
@@ -267,52 +209,36 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     }
 
     /* Create our module record */
-    tmp = *record =  malloc(sizeof(module_record));
+    tmp = *record = malloc(sizeof(module_record));
     if (!tmp)
         return 0;
     memset(tmp, 0, sizeof(module_record));
     tmp->filename = strdup(filename);
-    if (!tmp->filename)
-        goto error;
+    if (!tmp->filename) {
+        free(tmp);
+        return 0;
+    }
 
     /* Get the name of the module struct in the library */
     tblname = int_get_table_name_from_filename(filename);
-    if (!tblname)
-        goto error;
-
-    /* Open the module library */
-    tmp->dll = pdlopenl(filename);
-    if (!tmp->dll) {
-        /* printf("%s -- %s\n", filename, pdlerror()); */
-        goto error;
+    if (!tblname) {
+        free(tblname);
+        free(tmp);
+        return 0;
     }
 
-    /* Get the module struct */
-    tmp->module = (verto_module*) pdlsym(tmp->dll, tblname);
-    if (!tmp->module || tmp->module->vers != VERTO_MODULE_VERSION
-            || !tmp->module->funcs
-            || !tmp->module->funcs->ctx_new)
-        goto error;
-
-    /* Check to make sure that we have our required symbol if reqsym == true */
-    if (tmp->module->symb && reqsym
-            && !pdlsymlinked(NULL, tmp->module->symb))
-        goto error;
-
-    /* Check to make sure that this module supports our required features */
-    if (reqtypes != VERTO_EV_TYPE_NONE
-            && (tmp->module->types & reqtypes) != reqtypes)
-        goto error;
-
-    /* Re-open in execution mode */
-    tmp->dll = pdlreopen(filename, tmp->dll);
-    if (!tmp->dll)
-        goto error;
-
-    /* Get the module struct again */
-    tmp->module = (verto_module*) pdlsym(tmp->dll, tblname);
-    if (!tmp->module)
-        goto error;
+    /* Load the module */
+    error = module_load(filename, tblname, shouldload, &data, &tmp->dll,
+                        (void **) &tmp->module);
+    if (error || !tmp->dll || !tmp->module) {
+        /*if (error)
+            fprintf(stderr, "%s\n", error);*/
+        free(error);
+        module_close(tmp->dll);
+        free(tblname);
+        free(tmp);
+        return 0;
+    }
 
     /* Append the new module to the end of the loaded modules */
     for (tmp = loaded_modules ; tmp && tmp->next; tmp = tmp->next)
@@ -324,15 +250,6 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
 
     free(tblname);
     return 1;
-
-    error:
-        free(tblname);
-        free(tmp->filename);
-        if (tmp->dll)
-            pdlclose(tmp->dll);
-        free(tmp);
-        *record = NULL;
-        return 0;
 }
 
 static int
@@ -400,7 +317,7 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
         }
     }
 
-    if (!pdladdrmodname(verto_convert_module, &prefix))
+    if (!module_get_filename_for_symbol(verto_convert_module, &prefix))
         return 0;
 
     /* Example output:

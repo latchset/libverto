@@ -7,9 +7,10 @@ AM_LDFLAGS = -export-symbols-regex '^verto_' -version-info \
 AM_CFLAGS = -Wall -Wdeclaration-after-statement
 
 include_HEADERS      = verto.h verto-module.h
+noinst_HEADERS       = module.h
 lib_LTLIBRARIES      = libverto.la
 
-libverto_la_SOURCES  = verto.c verto.h
+libverto_la_SOURCES  = verto.c module.c verto.h
 libverto_la_LDFLAGS  = $(AM_LDFLAGS) $(dl_LIBS)
 
 # glib
