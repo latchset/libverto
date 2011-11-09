@@ -217,11 +217,15 @@ verto_break(verto_ctx *ctx);
  * VERTO_EV_FLAG_REINITIABLE flag. If you fork(), you MUST call this in the
  * child process after the fork!
  *
+ * If this function fails it indicates that at least one
+ * VERTO_EV_FLAG_REINITIABLE event was not rearmed or that ctx was NULL.
+ *
  * @see verto_new()
  * @see verto_default()
  * @param ctx The verto_ctx to re-initialize.
+ * @return Non-zero on success, 0 on error.
  */
-void
+int
 verto_reinitialize(verto_ctx *ctx);
 
 /**

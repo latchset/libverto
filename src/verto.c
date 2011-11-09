@@ -530,12 +530,14 @@ verto_break(verto_ctx *ctx)
         ctx->exit = 1;
 }
 
-void
+int
 verto_reinitialize(verto_ctx *ctx)
 {
     verto_ev *tmp, *next;
+    int error = 1;
+
     if (!ctx)
-        return;
+        return 0;
 
     /* Delete all events, but keep around the forkable ev structs */
     for (tmp = ctx->events; tmp; tmp = next) {
@@ -555,8 +557,11 @@ verto_reinitialize(verto_ctx *ctx)
     for (tmp = ctx->events; tmp; tmp = tmp->next) {
         tmp->actual = tmp->flags;
         tmp->ev = ctx->module->funcs->ctx_add(ctx->ctx, tmp, &tmp->actual);
-        assert(tmp->ev);
+        if (!tmp->ev)
+            error = 0;
     }
+
+    return error;
 }
 
 #define doadd(ev, set, type) \
