@@ -134,14 +134,6 @@ pdladdrmodname(void *addr, char **buf) {
 }
 #endif
 
-#ifndef NSIG
-#ifdef _NSIG
-#define NSIG _NSIG
-#else
-#define NSIG SIGRTMIN
-#endif
-#endif
-
 #define  _str(s) # s
 #define __str(s) _str(s)
 
