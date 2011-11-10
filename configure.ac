@@ -20,6 +20,19 @@ m4_ifdef([AM_SILENT_RULES], [
 
 AC_CHECK_LIB([dl],[dlopen])
 
+AC_ARG_WITH([pthread],
+            [AS_HELP_STRING([--with-pthread],
+                            [build pthread support @<:@default: automatic@:>@])],
+            [case $withval in
+                 no) PTHREAD_REQUIRED=;;
+                yes) PTHREAD_REQUIRED=yes;;
+                  *) PTHREAD_REQUIRED=no;;
+             esac], [PTHREAD_REQUIRED=no])
+if test "$PTHREAD_REQUIRED"; then
+  AX_PTHREAD([PTHREAD_CFLAGS="$PTHREAD_CFLAGS -DHAVE_PTHREAD=1" && CC="$PTHREAD_CC"],
+             [test "x$PTHREAD_REQUIRED" = xyes && AC_MSG_ERROR("pthread not found")])
+fi
+
 PKG_CHECK_MODULES(glib, glib-2.0, have_glib=yes, have_glib=no)
 AC_ARG_WITH(glib,
             [AS_HELP_STRING([--without-glib],

@@ -35,6 +35,10 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
+
 #include <verto-module.h>
 #include "module.h"
 
@@ -85,6 +89,14 @@ struct _module_record {
 };
 
 static module_record *loaded_modules;
+#ifdef HAVE_PTHREAD
+static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define mutex_lock(x) pthread_mutex_lock(x)
+#define mutex_unlock(x) pthread_mutex_unlock(x)
+#else
+#define mutex_lock(x)
+#define mutex_unlock(x)
+#endif
 
 static int
 int_vasprintf(char **strp, const char *fmt, va_list ap) {
@@ -203,10 +215,14 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     shouldload_data data  = { reqsym, reqtypes };
 
     /* Check the loaded modules to see if we already loaded one */
+    mutex_lock(&loaded_modules_mutex);
     for (*record = loaded_modules ; *record ; *record = (*record)->next) {
-        if (!strcmp((*record)->filename, filename))
+        if (!strcmp((*record)->filename, filename)) {
+            mutex_unlock(&loaded_modules_mutex);
             return 1;
+        }
     }
+    mutex_unlock(&loaded_modules_mutex);
 
     /* Create our module record */
     tmp = *record = malloc(sizeof(module_record));
@@ -241,12 +257,14 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     }
 
     /* Append the new module to the end of the loaded modules */
+    mutex_lock(&loaded_modules_mutex);
     for (tmp = loaded_modules ; tmp && tmp->next; tmp = tmp->next)
         continue;
     if (tmp)
         tmp->next = *record;
     else
         loaded_modules = *record;
+    mutex_unlock(&loaded_modules_mutex);
 
     free(tblname);
     return 1;
@@ -303,19 +321,25 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
     char *tmp = NULL;
 
     /* Check the cache */
+    mutex_lock(&loaded_modules_mutex);
     if (impl) {
         for (*record = loaded_modules ; *record ; *record = (*record)->next) {
             if ((strchr(impl, '/') && !strcmp(impl, (*record)->filename))
-                    || !strcmp(impl, (*record)->module->name))
+                    || !strcmp(impl, (*record)->module->name)) {
+                mutex_unlock(&loaded_modules_mutex);
                 return 1;
+            }
         }
     } else if (loaded_modules) {
         for (*record = loaded_modules ; *record ; *record = (*record)->next) {
             if (reqtypes == VERTO_EV_TYPE_NONE
-                    || ((*record)->module->types & reqtypes) == reqtypes)
+                    || ((*record)->module->types & reqtypes) == reqtypes) {
+                mutex_unlock(&loaded_modules_mutex);
                 return 1;
+            }
         }
     }
+    mutex_unlock(&loaded_modules_mutex);
 
     if (!module_get_filename_for_symbol(verto_convert_module, &prefix))
         return 0;
@@ -468,8 +492,12 @@ verto_set_default(const char *impl, verto_ev_type reqtypes)
 {
     module_record *mr;
 
-    if (loaded_modules || !impl)
+    mutex_lock(&loaded_modules_mutex);
+    if (loaded_modules || !impl) {
+        mutex_unlock(&loaded_modules_mutex);
         return 0;
+    }
+    mutex_unlock(&loaded_modules_mutex);
 
     return load_module(impl, reqtypes, &mr);
 }
@@ -753,14 +781,19 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
         goto error;
 
     if (deflt) {
+        mutex_lock(&loaded_modules_mutex);
         for (mr = loaded_modules ; mr ; mr = mr->next) {
+            verto_ctx *tmp;
             if (mr->module == module && mr->defctx) {
                 if (mctx)
                     module->funcs->ctx_free(mctx);
-                mr->defctx->ref++;
-                return mr->defctx;
+                tmp = mr->defctx;
+                tmp->ref++;
+                mutex_unlock(&loaded_modules_mutex);
+                return tmp;
             }
         }
+        mutex_unlock(&loaded_modules_mutex);
     }
 
     if (!mctx) {
@@ -784,12 +817,15 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
     ctx->deflt = deflt;
 
     if (deflt) {
-        module_record **tmp = &loaded_modules;
+        module_record **tmp;
 
+        mutex_lock(&loaded_modules_mutex);
+        tmp = &loaded_modules;
         for (mr = loaded_modules ; mr ; mr = mr->next) {
             if (mr->module == module) {
                 assert(mr->defctx == NULL);
                 mr->defctx = ctx;
+                mutex_unlock(&loaded_modules_mutex);
                 return ctx;
             }
 
@@ -798,6 +834,7 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
                 break;
             }
         }
+        mutex_unlock(&loaded_modules_mutex);
 
         *tmp = malloc(sizeof(module_record));
         if (!*tmp) {

@@ -2,16 +2,17 @@ LIBVERTO_CURRENT=1
 LIBVERTO_REVISION=0
 LIBVERTO_AGE=0
 
+AM_CFLAGS = -Wall -Wdeclaration-after-statement
 AM_LDFLAGS = -export-symbols-regex '^verto_' -version-info \
                $(LIBVERTO_CURRENT):$(LIBVERTO_REVISION):$(LIBVERTO_AGE)
-AM_CFLAGS = -Wall -Wdeclaration-after-statement
 
-include_HEADERS      = verto.h verto-module.h
-noinst_HEADERS       = module.h
-lib_LTLIBRARIES      = libverto.la
+include_HEADERS     = verto.h verto-module.h
+noinst_HEADERS      = module.h
+lib_LTLIBRARIES     = libverto.la
 
-libverto_la_SOURCES  = verto.c module.c verto.h
-libverto_la_LDFLAGS  = $(AM_LDFLAGS) $(dl_LIBS)
+libverto_la_SOURCES = verto.c module.c verto.h
+libverto_la_CFLAGS  = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
+libverto_la_LIBADD  = $(AM_LIBS) $(LIBS) $(PTHREAD_LIBS)
 
 # glib
 if WITH_GLIB
