@@ -43,7 +43,8 @@ static char *MODULES[] = {
 #ifdef HAVE_TEVENT
     "tevent",
 #endif
-    NULL
+    NULL,
+    NULL,
 };
 
 int do_test(verto_ctx *ctx);
