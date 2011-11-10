@@ -15,7 +15,7 @@ libverto_la_CFLAGS  = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
 libverto_la_LIBADD  = $(AM_LIBS) $(LIBS) $(PTHREAD_LIBS)
 
 # glib
-if WITH_GLIB
+if BUILD_GLIB
 lib_LTLIBRARIES += libverto-glib.la
 include_HEADERS += verto-glib.h
 libverto_glib_la_SOURCES  = verto-glib.c
@@ -25,7 +25,7 @@ libverto_glib_la_LIBADD   = libverto.la
 endif
 
 # libev
-if WITH_LIBEV
+if BUILD_LIBEV
 lib_LTLIBRARIES += libverto-libev.la
 include_HEADERS += verto-libev.h
 libverto_libev_la_SOURCES = verto-libev.c
@@ -35,7 +35,7 @@ libverto_libev_la_LIBADD  = libverto.la
 endif
 
 # libevent
-if WITH_LIBEVENT
+if BUILD_LIBEVENT
 lib_LTLIBRARIES += libverto-libevent.la
 include_HEADERS += verto-libevent.h
 libverto_libevent_la_SOURCES = verto-libevent.c
@@ -45,7 +45,7 @@ libverto_libevent_la_LIBADD  = libverto.la
 endif
 
 # tevent
-if WITH_TEVENT
+if BUILD_TEVENT
 lib_LTLIBRARIES += libverto-tevent.la
 include_HEADERS += verto-tevent.h
 libverto_tevent_la_SOURCES = verto-tevent.c

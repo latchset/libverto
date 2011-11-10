@@ -24,95 +24,85 @@ AC_ARG_WITH([pthread],
             [AS_HELP_STRING([--with-pthread],
                             [build pthread support @<:@default: automatic@:>@])],
             [case $withval in
-                 no) PTHREAD_REQUIRED=;;
-                yes) PTHREAD_REQUIRED=yes;;
-                  *) PTHREAD_REQUIRED=no;;
-             esac], [PTHREAD_REQUIRED=no])
-if test "$PTHREAD_REQUIRED"; then
-  AX_PTHREAD([PTHREAD_CFLAGS="$PTHREAD_CFLAGS -DHAVE_PTHREAD=1" && CC="$PTHREAD_CC"],
-             [test "x$PTHREAD_REQUIRED" = xyes && AC_MSG_ERROR("pthread not found")])
+                 no) WITH_PTHREAD=no;;
+                yes) WITH_PTHREAD=yes;;
+                  *) WITH_PTHREAD=auto;;
+             esac], [WITH_PTHREAD=auto])
+BUILD_PTHREAD=no
+if test "x$WITH_PTHREAD" != xno; then
+  AX_PTHREAD([PTHREAD_CFLAGS="$PTHREAD_CFLAGS -DHAVE_PTHREAD=1";
+              CC="$PTHREAD_CC";
+              BUILD_PTHREAD=yes],
+             [test "x$WITH_PTHREAD" = xyes && AC_MSG_ERROR("pthread not found")])
 fi
 
-PKG_CHECK_MODULES(glib, glib-2.0, have_glib=yes, have_glib=no)
-AC_ARG_WITH(glib,
-            [AS_HELP_STRING([--without-glib],
-              [build the glib library @<:@automatic@:>@])],
-            [with_glib=no],
-            [test x$have_glib = xyes && with_glib=yes])
-if test x$with_glib = xyes; then
-	AC_SUBST(glib_CFLAGS)
-	AC_SUBST(glib_LIBS)
-	if test x$have_glib = xno; then
-		echo "glib library requires glib-2.0!"
-		exit 1
-	fi
-else
-	with_glib=no
+AC_ARG_WITH([glib],
+            [AS_HELP_STRING([--with-glib],
+                            [build the glib library @<:@default: automatic@:>@])],
+            [case $withval in
+                 no) WITH_GLIB=no;;
+                yes) WITH_GLIB=yes;;
+                  *) WITH_GLIB=auto;;
+             esac], [WITH_GLIB=auto])
+BUILD_GLIB=no
+if test "x$WITH_GLIB" != xno; then
+  PKG_CHECK_MODULES([GLIB], [glib-2.0], [BUILD_GLIB=yes],
+                    [test "x$WITH_GLIB" = xyes && AC_MSG_ERROR("glib not found")])
 fi
-AM_CONDITIONAL([WITH_GLIB], [test x$with_glib = xyes])
+AM_CONDITIONAL([BUILD_GLIB], [test "x$BUILD_GLIB" = xyes])
 
-PKG_CHECK_MODULES(libev, libev, have_libev=yes, have_libev=no)
-AC_ARG_WITH(libev,
-            [AS_HELP_STRING([--without-libev],
-              [build the libev library @<:@automatic@:>@])],
-            [with_libev=no],
-            [test x$have_libev = xyes && with_libev=yes])
-if test x$with_libev = xyes; then
-	AC_SUBST(libev_CFLAGS)
-	AC_SUBST(libev_LIBS)
-	if test x$have_libev = xno; then
-		echo "libev library requires libev!"
-		exit 1
-	fi
-else
-	with_libev=no
+AC_ARG_WITH([libev],
+            [AS_HELP_STRING([--with-libev],
+                            [build the libev library @<:@default: automatic@:>@])],
+            [case $withval in
+                 no) WITH_LIBEV=no;;
+                yes) WITH_LIBEV=yes;;
+                  *) WITH_LIBEV=auto;;
+             esac], [WITH_LIBEV=auto])
+BUILD_LIBEV=no
+if test "x$WITH_LIBEV" != xno; then
+  PKG_CHECK_MODULES([LIBEV], [libev], [BUILD_LIBEV=yes],
+                    [test "x$WITH_LIBEV" = xyes && AC_MSG_ERROR("libev not found")])
 fi
-AM_CONDITIONAL([WITH_LIBEV], [test x$with_libev = xyes])
+AM_CONDITIONAL([BUILD_LIBEV], [test "x$BUILD_LIBEV" = xyes])
 
-PKG_CHECK_MODULES(libevent, libevent >= 2.0, have_libevent=yes, have_libevent=no)
-AC_ARG_WITH(libevent,
-            [AS_HELP_STRING([--without-libevent],
-              [build the libevent library @<:@automatic@:>@])],
-            [with_libevent=no],
-            [test x$have_libevent = xyes && with_libevent=yes])
-if test x$with_libevent = xyes; then
-	AC_SUBST(libevent_CFLAGS)
-	AC_SUBST(libevent_LIBS)
-	if test x$have_libevent = xno; then
-		echo "libevent library requires libevent >= 2.0!"
-		exit 1
-	fi
-else
-	with_libevent=no
+AC_ARG_WITH([libevent],
+            [AS_HELP_STRING([--with-libevent],
+                            [build the libevent library @<:@default: automatic@:>@])],
+            [case $withval in
+                 no) WITH_LIBEVENT=no;;
+                yes) WITH_LIBEVENT=yes;;
+                  *) WITH_LIBEVENT=auto;;
+             esac], [WITH_LIBEVENT=auto])
+BUILD_LIBEVENT=no
+if test "x$WITH_LIBEVENT" != xno; then
+  PKG_CHECK_MODULES([LIBEVENT], [libevent >= 2.0], [BUILD_LIBEVENT=yes],
+                    [test "x$WITH_LIBEVENT" = xyes && AC_MSG_ERROR("libevent not found")])
 fi
-AM_CONDITIONAL([WITH_LIBEVENT], [test x$with_libevent = xyes])
+AM_CONDITIONAL([BUILD_LIBEVENT], [test "x$BUILD_LIBEVENT" = xyes])
 
-PKG_CHECK_MODULES(tevent, tevent, have_tevent=yes, have_tevent=no)
-AC_ARG_WITH(tevent,
-            [AS_HELP_STRING([--without-tevent],
-              [build the tevent library @<:@automatic@:>@])],
-            [with_tevent=no],
-            [test x$have_tevent = xyes && with_tevent=yes])
-if test x$with_tevent = xyes; then
-	AC_SUBST(tevent_CFLAGS)
-	AC_SUBST(tevent_LIBS)
-	if test x$have_tevent = xno; then
-		echo "tevent library requires tevent!"
-		exit 1
-	fi
-else
-	with_tevent=no
+AC_ARG_WITH([tevent],
+            [AS_HELP_STRING([--with-tevent],
+                            [build the tevent library @<:@default: automatic@:>@])],
+            [case $withval in
+                 no) WITH_TEVENT=no;;
+                yes) WITH_TEVENT=yes;;
+                  *) WITH_TEVENT=auto;;
+             esac], [WITH_TEVENT=auto])
+BUILD_TEVENT=no
+if test "x$WITH_TEVENT" != xno; then
+  PKG_CHECK_MODULES([TEVENT], [tevent], [BUILD_TEVENT=yes],
+                    [test "x$WITH_TEVENT" = xyes && AC_MSG_ERROR("tevent not found")])
 fi
-AM_CONDITIONAL([WITH_TEVENT], [test x$with_tevent = xyes])
-
+AM_CONDITIONAL([BUILD_TEVENT], [test "x$BUILD_TEVENT" = xyes])
 
 AC_MSG_NOTICE()
 AC_MSG_NOTICE([LIBRARIES TO BE BUILT])
-AC_MSG_NOTICE(AS_HELP_STRING([libverto], [yes]))
-AC_MSG_NOTICE(AS_HELP_STRING([libverto-glib], [$with_glib]))
-AC_MSG_NOTICE(AS_HELP_STRING([libverto-libev], [$with_libev]))
-AC_MSG_NOTICE(AS_HELP_STRING([libverto-libevent], [$with_libevent]))
-AC_MSG_NOTICE(AS_HELP_STRING([libverto-tevent], [$with_tevent]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto], [yes (pthread: $BUILD_PTHREAD)]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-glib], [$BUILD_GLIB]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-libev], [$BUILD_LIBEV]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-libevent], [$BUILD_LIBEVENT]))
+AC_MSG_NOTICE(AS_HELP_STRING([libverto-tevent], [$BUILD_TEVENT]))
 AC_MSG_NOTICE()
 
 AC_CONFIG_FILES(Makefile
