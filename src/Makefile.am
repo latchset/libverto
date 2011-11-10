@@ -19,8 +19,8 @@ if BUILD_GLIB
 lib_LTLIBRARIES += libverto-glib.la
 include_HEADERS += verto-glib.h
 libverto_glib_la_SOURCES  = verto-glib.c
-libverto_glib_la_CFLAGS   = $(AM_CFLAGS)  @glib_CFLAGS@
-libverto_glib_la_LDFLAGS  = $(AM_LDFLAGS) @glib_LIBS@
+libverto_glib_la_CFLAGS   = $(AM_CFLAGS)  $(GLIB_CFLAGS)
+libverto_glib_la_LDFLAGS  = $(AM_LDFLAGS) $(GLIB_LIBS)
 libverto_glib_la_LIBADD   = libverto.la
 endif
 
@@ -29,8 +29,8 @@ if BUILD_LIBEV
 lib_LTLIBRARIES += libverto-libev.la
 include_HEADERS += verto-libev.h
 libverto_libev_la_SOURCES = verto-libev.c
-libverto_libev_la_CFLAGS  = $(AM_CFLAGS)  @libev_CFLAGS@
-libverto_libev_la_LDFLAGS = $(AM_LDFLAGS) @libev_LIBS@
+libverto_libev_la_CFLAGS  = $(AM_CFLAGS)  $(LIBEV_CFLAGS)
+libverto_libev_la_LDFLAGS = $(AM_LDFLAGS) $(LIBEV_LIBS)
 libverto_libev_la_LIBADD  = libverto.la
 endif
 
@@ -39,8 +39,8 @@ if BUILD_LIBEVENT
 lib_LTLIBRARIES += libverto-libevent.la
 include_HEADERS += verto-libevent.h
 libverto_libevent_la_SOURCES = verto-libevent.c
-libverto_libevent_la_CFLAGS  = $(AM_CFLAGS)  @libevent_CFLAGS@
-libverto_libevent_la_LDFLAGS = $(AM_LDFLAGS) @libevent_LIBS@
+libverto_libevent_la_CFLAGS  = $(AM_CFLAGS)  $(LIBEVENT_CFLAGS)
+libverto_libevent_la_LDFLAGS = $(AM_LDFLAGS) $(LIBEVENT_LIBS)
 libverto_libevent_la_LIBADD  = libverto.la
 endif
 
@@ -49,7 +49,7 @@ if BUILD_TEVENT
 lib_LTLIBRARIES += libverto-tevent.la
 include_HEADERS += verto-tevent.h
 libverto_tevent_la_SOURCES = verto-tevent.c
-libverto_tevent_la_CFLAGS  = $(AM_CFLAGS)  @tevent_CFLAGS@
-libverto_tevent_la_LDFLAGS = $(AM_LDFLAGS) @tevent_LIBS@
+libverto_tevent_la_CFLAGS  = $(AM_CFLAGS)  $(TEVENT_CFLAGS)
+libverto_tevent_la_LDFLAGS = $(AM_LDFLAGS) $(TEVENT_LIBS)
 libverto_tevent_la_LIBADD  = libverto.la
 endif
