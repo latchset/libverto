@@ -1,0 +1,20 @@
+2011-11-11  Nathaniel McCallum  <npmccallum@redhat.com>
+	* == Release 0.2.2 ==
+	* Remove trailing uses of types starting with _
+	* Documentation fix
+	
+2011-11-10  Nathaniel McCallum  <npmccallum@redhat.com>
+	* == Release 0.2.1 ==
+	* Build system fix for broken 0.2.0 release 
+	
+2011-11-10  Nathaniel McCallum  <npmccallum@redhat.com>
+	* == Release 0.2.0 ==
+	* Fix inconsistent verto_default() singleton state
+	* Give modules unique table names
+	* Remove signal table verification magic (no longer needed)
+	* Give verto_reinitialize() an error condition (int return value)
+	* Add (optional) pthread locking around our global state
+	* Cleanup the build system arguments	
+
+2011-09-30  Nathaniel McCallum  <npmccallum@redhat.com>
+	* Initial release 
