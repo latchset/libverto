@@ -101,7 +101,7 @@ typedef struct {
  * @param name The name of the module (unquoted)
  * @param deflt Whether the ctx is the default context or not
  * @param ctx The context to store
- * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
+ * @return A new verto_ctx, or NULL on error. Call verto_free() when done.
  */
 #define verto_convert(name, deflt, ctx) \
         verto_convert_module(&VERTO_MODULE_TABLE(name), deflt, ctx)
@@ -132,7 +132,7 @@ typedef struct {
  *
  * @param name The name of the module (unquoted)
  * @param ctx The context private to store
- * @return A new _ev_ctx, or NULL on error. Call verto_free() when done.
+ * @return A new verto_ctx, or NULL on error. Call verto_free() when done.
  */
 verto_ctx *
 verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *ctx);
