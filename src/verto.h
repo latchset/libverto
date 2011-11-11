@@ -39,8 +39,8 @@ typedef int verto_proc_status;
 
 #define VERTO_SIG_IGN ((verto_callback *) 1)
 
-typedef struct _verto_ctx verto_ctx;
-typedef struct _verto_ev verto_ev;
+typedef struct verto_ctx verto_ctx;
+typedef struct verto_ev verto_ev;
 
 typedef enum {
     VERTO_EV_TYPE_NONE = 0,

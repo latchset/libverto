@@ -45,7 +45,7 @@
 #define  _str(s) # s
 #define __str(s) _str(s)
 
-struct _verto_ctx {
+struct verto_ctx {
     size_t ref;
     verto_mod_ctx *ctx;
     const verto_module *module;
@@ -59,7 +59,7 @@ typedef struct {
     verto_proc_status status;
 } verto_child;
 
-struct _verto_ev {
+struct verto_ev {
     verto_ev *next;
     verto_ctx *ctx;
     verto_ev_type type;
@@ -79,8 +79,8 @@ struct _verto_ev {
     } option;
 };
 
-typedef struct _module_record module_record;
-struct _module_record {
+typedef struct module_record module_record;
+struct module_record {
     module_record *next;
     const verto_module *module;
     void *dll;
