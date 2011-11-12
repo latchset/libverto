@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#define _GNU_SOURCE /* For dladdr(), asprintf() */
+#define _GNU_SOURCE /* For asprintf() */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +89,9 @@ struct module_record {
 };
 
 static module_record *loaded_modules;
+static void *(*resize_cb)(void *mem, size_t size);
+static int resize_cb_hierarchical;
+
 #ifdef HAVE_PTHREAD
 static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define mutex_lock(x) pthread_mutex_lock(x)
@@ -97,6 +100,15 @@ static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define mutex_lock(x)
 #define mutex_unlock(x)
 #endif
+
+#define vfree(mem) vresize(mem, 0)
+static void *
+vresize(void *mem, size_t size)
+{
+    if (!resize_cb)
+        resize_cb = &realloc;
+    return (*resize_cb)(mem, size);
+}
 
 static int
 int_vasprintf(char **strp, const char *fmt, va_list ap) {
@@ -125,19 +137,6 @@ int_asprintf(char **strp, const char *fmt, ...) {
 }
 
 static char *
-int_get_table_name(const char *suffix)
-{
-    char *tmp;
-
-    tmp = malloc(strlen(suffix) + strlen(__str(VERTO_MODULE_TABLE())) + 1);
-    if (tmp) {
-        strcpy(tmp, __str(VERTO_MODULE_TABLE()));
-        strcat(tmp, suffix);
-    }
-    return tmp;
-}
-
-static char *
 int_get_table_name_from_filename(const char *filename)
 {
     char *bn = NULL, *tmp = NULL;
@@ -160,7 +159,8 @@ int_get_table_name_from_filename(const char *filename)
     if (tmp) {
         if (strchr(tmp+1, '.')) {
             *strchr(tmp+1, '.') = '\0';
-            tmp = int_get_table_name(tmp + 1);
+            if (int_asprintf(&tmp, "%s%s", __str(VERTO_MODULE_TABLE()), tmp + 1) < 0)
+                tmp = NULL;
         } else
             tmp = NULL;
     }
@@ -225,13 +225,13 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     mutex_unlock(&loaded_modules_mutex);
 
     /* Create our module record */
-    tmp = *record = malloc(sizeof(module_record));
+    tmp = *record = vresize(NULL, sizeof(module_record));
     if (!tmp)
         return 0;
     memset(tmp, 0, sizeof(module_record));
     tmp->filename = strdup(filename);
     if (!tmp->filename) {
-        free(tmp);
+        vfree(tmp);
         return 0;
     }
 
@@ -239,7 +239,7 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     tblname = int_get_table_name_from_filename(filename);
     if (!tblname) {
         free(tblname);
-        free(tmp);
+        vfree(tmp);
         return 0;
     }
 
@@ -252,7 +252,7 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
         free(error);
         module_close(tmp->dll);
         free(tblname);
-        free(tmp);
+        vfree(tmp);
         return 0;
     }
 
@@ -423,7 +423,7 @@ make_ev(verto_ctx *ctx, verto_callback *callback,
     if (!ctx || !callback)
         return NULL;
 
-    ev = malloc(sizeof(verto_ev));
+    ev = vresize(NULL, sizeof(verto_ev));
     if (ev) {
         memset(ev, 0, sizeof(verto_ev));
         ev->ctx        = ctx;
@@ -502,6 +502,17 @@ verto_set_default(const char *impl, verto_ev_type reqtypes)
     return load_module(impl, reqtypes, &mr);
 }
 
+int
+verto_set_allocator(void *(*resize)(void *mem, size_t size),
+                    int hierarchical)
+{
+    if (resize_cb || !resize)
+        return 0;
+    resize_cb = resize;
+    resize_cb_hierarchical = hierarchical;
+    return 1;
+}
+
 void
 verto_free(verto_ctx *ctx)
 {
@@ -520,7 +531,7 @@ verto_free(verto_ctx *ctx)
     if (!ctx->deflt || !ctx->module->funcs->ctx_default)
         ctx->module->funcs->ctx_free(ctx->ctx);
 
-    free(ctx);
+    vfree(ctx);
 }
 
 void
@@ -599,7 +610,7 @@ verto_reinitialize(verto_ctx *ctx)
         ev->actual = ev->flags; \
         ev->ev = ctx->module->funcs->ctx_add(ctx->ctx, ev, &ev->actual); \
         if (!ev->ev) { \
-            free(ev); \
+            vfree(ev); \
             return NULL; \
         } \
         push_ev(ctx, ev); \
@@ -760,7 +771,7 @@ verto_del(verto_ev *ev)
         ev->onfree(ev->ctx, ev);
     ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
     remove_ev(&(ev->ctx->events), ev);
-    free(ev);
+    vfree(ev);
 }
 
 verto_ev_type
@@ -806,7 +817,7 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
             goto error;
     }
 
-    ctx = malloc(sizeof(verto_ctx));
+    ctx = vresize(NULL, sizeof(verto_ctx));
     if (!ctx)
         goto error;
     memset(ctx, 0, sizeof(verto_ctx));
@@ -836,9 +847,9 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
         }
         mutex_unlock(&loaded_modules_mutex);
 
-        *tmp = malloc(sizeof(module_record));
+        *tmp = vresize(NULL, sizeof(module_record));
         if (!*tmp) {
-            free(ctx);
+            vfree(ctx);
             goto error;
         }
 

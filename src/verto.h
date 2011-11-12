@@ -171,6 +171,25 @@ int
 verto_set_default(const char *impl, verto_ev_type reqtypes);
 
 /**
+ * Sets the allocator to use for verto_ctx and verto_ev objects.
+ *
+ * If you plan to set the allocator, you MUST call this function before any
+ * other verto_*() calls.
+ *
+ * @see verto_new()
+ * @see verto_default()
+ * @see verto_add_io()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @param resize The allocator to use (behaves like realloc())
+ * @param hierarchical Zero if the allocator is not hierarchical
+ */
+int
+verto_set_allocator(void *(*resize)(void *mem, size_t size), int hierarchical);
+
+/**
  * Frees a verto_ctx.
  *
  * When called on a default verto_ctx, the reference will be freed but the
