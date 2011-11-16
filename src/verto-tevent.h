@@ -28,6 +28,11 @@
 #include <verto.h>
 #include <tevent.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 verto_ctx *
 verto_new_tevent(void);
 
@@ -37,4 +42,7 @@ verto_default_tevent(void);
 verto_ctx *
 verto_convert_tevent(struct tevent_context *context);
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 #endif /* VERTO_TEVENT_H_ */

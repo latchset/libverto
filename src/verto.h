@@ -39,6 +39,11 @@ typedef int verto_proc_status;
 
 #define VERTO_SIG_IGN ((verto_callback *) 1)
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 typedef struct verto_ctx verto_ctx;
 typedef struct verto_ev verto_ev;
 
@@ -499,4 +504,7 @@ verto_del(verto_ev *ev);
 verto_ev_type
 verto_get_supported_types(verto_ctx *ctx);
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 #endif /* VERTO_H_ */

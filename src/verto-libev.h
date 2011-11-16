@@ -28,6 +28,11 @@
 #include <verto.h>
 #include <ev.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 verto_ctx *
 verto_new_libev(void);
 
@@ -37,4 +42,7 @@ verto_default_libev(void);
 verto_ctx *
 verto_convert_libev(struct ev_loop* loop);
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 #endif /* VERTO_LIBEV_H_ */

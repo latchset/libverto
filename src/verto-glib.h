@@ -28,6 +28,11 @@
 #include <verto.h>
 #include <glib.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 verto_ctx *
 verto_new_glib(void);
 
@@ -43,4 +48,7 @@ verto_default_glib(void);
 verto_ctx *
 verto_convert_glib(GMainContext *mc, GMainLoop *ml);
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 #endif /* VERTO_GLIB_H_ */

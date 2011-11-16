@@ -28,6 +28,11 @@
 #include <verto.h>
 #include <event2/event.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 verto_ctx *
 verto_new_libevent(void);
 
@@ -37,4 +42,7 @@ verto_default_libevent(void);
 verto_ctx *
 verto_convert_libevent(struct event_base *ebase);
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif /* __cplusplus */
 #endif /* VERTO_LIBEVENT_H_ */
