@@ -63,11 +63,14 @@ cb(verto_ctx *ctx, verto_ev *ev)
 
     bytes = read(fd, buff, DATALEN);
     if (callcount++ == 0) {
+        assert(verto_get_fd_state(ev) & VERTO_EV_FLAG_IO_READ);
         assert(bytes == DATALEN);
         close(fds[1]);
         fds[1] = -1;
     }
     else {
+        if (!(verto_get_fd_state(ev) & VERTO_EV_FLAG_IO_ERROR))
+            printf("WARNING: VERTO_EV_FLAG_IO_ERROR not supported!\n");
         assert(bytes != DATALEN);
         close(fd);
         fds[0] = -1;

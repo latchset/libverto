@@ -61,16 +61,36 @@ tevent_ctx_reinitialize(verto_mod_ctx *ctx)
     tevent_re_initialise(ctx);
 }
 
-#define definecb(type, ...) \
-    static void tevent_ ## type ## _cb(struct tevent_context *c, \
-                                       struct tevent_ ## type *e, \
-                                       __VA_ARGS__, void *data) { \
-        verto_fire(data); \
-    }
+static void
+tevent_fd_cb(struct tevent_context *c, struct tevent_fd *e,
+             uint16_t fl, void *data)
+{
+    verto_ev_flag state = VERTO_EV_FLAG_NONE;
 
-definecb(fd, uint16_t fl)
-definecb(timer, struct timeval ct)
-definecb(signal, int signum, int count, void *siginfo)
+    if (fl & TEVENT_FD_READ)
+        state |= VERTO_EV_FLAG_IO_READ;
+    if (fl & TEVENT_FD_WRITE)
+        state |= VERTO_EV_FLAG_IO_WRITE;
+    if (fl & TEVENT_FD_ERROR)
+        state |= VERTO_EV_FLAG_IO_ERROR;
+
+    verto_set_fd_state(data, state);
+    verto_fire(data);
+}
+
+static void
+tevent_timer_cb(struct tevent_context *c, struct tevent_timer *e,
+                struct timeval ct, void *data)
+{
+    verto_fire(data);
+}
+
+static void
+tevent_signal_cb(struct tevent_context *c, struct tevent_signal *e,
+                 int signum, int count, void *siginfo, void *data)
+{
+    verto_fire(data);
+}
 
 static verto_mod_ev *
 tevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)

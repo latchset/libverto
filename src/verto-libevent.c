@@ -92,6 +92,18 @@ libevent_ctx_reinitialize(verto_mod_ctx *ctx)
 static void
 libevent_callback(evutil_socket_t socket, short type, void *data)
 {
+    verto_ev_flag state = VERTO_EV_FLAG_NONE;
+
+    if (type & EV_READ)
+        state |= VERTO_EV_FLAG_IO_READ;
+    if (type & EV_WRITE)
+        state |= VERTO_EV_FLAG_IO_WRITE;
+#ifdef EV_ERROR
+    if (type & EV_ERROR)
+        state |= VERTO_EV_FLAG_IO_ERROR;
+#endif
+
+    verto_set_fd_state(data, state);
     verto_fire(data);
 }
 

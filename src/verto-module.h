@@ -166,4 +166,19 @@ verto_fire(verto_ev *ev);
 void
 verto_set_proc_status(verto_ev *ev, verto_proc_status status);
 
+/**
+ * Sets the state of the fd which caused this event to fire.
+ *
+ * This function does nothing if the verto_ev is not a io type.
+ *
+ * Only the flags VERTO_EV_FLAG_IO_(READ|WRITE|ERROR) are supported. All other
+ * flags are unset.
+ *
+ * @see verto_add_io()
+ * @param ev The verto_ev to set the state in.
+ * @param state The fd state.
+ */
+void
+verto_set_fd_state(verto_ev *ev, verto_ev_flag state);
+
 #endif /* VERTO_MODULE_H_ */

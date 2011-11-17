@@ -142,6 +142,16 @@ glib_callback(gpointer data)
 static gboolean
 glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
 {
+    verto_ev_flag state = VERTO_EV_FLAG_NONE;
+
+    if (condition & (G_IO_IN | G_IO_PRI))
+        state |= VERTO_EV_FLAG_IO_READ;
+    if (condition & G_IO_OUT)
+        state |= VERTO_EV_FLAG_IO_WRITE;
+    if (condition & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+        state |= VERTO_EV_FLAG_IO_ERROR;
+
+    verto_set_fd_state(data, state);
     return glib_callback(data);
 }
 

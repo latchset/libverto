@@ -78,9 +78,19 @@ libev_ctx_reinitialize(verto_mod_ctx *ctx)
 static void
 libev_callback(EV_P_ ev_watcher *w, int revents)
 {
-    if (verto_get_type(w->data) == VERTO_EV_TYPE_CHILD)
+    verto_ev_flag state = VERTO_EV_FLAG_NONE;
+
+    if (verto_get_type(w->data)== VERTO_EV_TYPE_CHILD)
         verto_set_proc_status(w->data, ((ev_child*) w)->rstatus);
 
+    if (revents & EV_READ)
+        state |= VERTO_EV_FLAG_IO_READ;
+    if (revents & EV_WRITE)
+        state |= VERTO_EV_FLAG_IO_WRITE;
+    if (revents & EV_ERROR)
+        state |= VERTO_EV_FLAG_IO_ERROR;
+
+    verto_set_fd_state(w->data, state);
     verto_fire(w->data);
 }
 

@@ -64,8 +64,9 @@ typedef enum {
     VERTO_EV_FLAG_PRIORITY_HIGH = 1 << 3,
     VERTO_EV_FLAG_IO_READ = 1 << 4,
     VERTO_EV_FLAG_IO_WRITE = 1 << 5,
+    VERTO_EV_FLAG_IO_ERROR = 1 << 7,
     VERTO_EV_FLAG_REINITIABLE = 1 << 6,
-    _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_REINITIABLE
+    _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_ERROR
 } verto_ev_flag;
 
 typedef void (verto_callback)(verto_ctx *ctx, verto_ev *ev);
@@ -439,6 +440,16 @@ verto_get_flags(const verto_ev *ev);
  */
 int
 verto_get_fd(const verto_ev *ev);
+
+/**
+ * Gets the file descriptor state from when the event fires.
+ *
+ * @see verto_add_io()
+ * @param ev The verto_ev to retrieve the fd state from.
+ * @return The fd state.
+ */
+verto_ev_flag
+verto_get_fd_state(const verto_ev *ev);
 
 /**
  * Gets the interval associated with a timeout verto_ev.

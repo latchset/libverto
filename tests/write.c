@@ -58,6 +58,8 @@ error_cb(verto_ctx *ctx, verto_ev *ev)
 
     /* When we get here, the fd should be closed, so an error should occur */
     fd = verto_get_fd(ev);
+    if (!(verto_get_fd_state(ev) & VERTO_EV_FLAG_IO_ERROR))
+        printf("WARNING: VERTO_EV_FLAG_IO_ERROR not supported!\n");
     assert(write(fd, DATA, DATALEN) != DATALEN);
     close(fd);
     fds[1] = -1;
@@ -83,6 +85,7 @@ write_cb(verto_ctx *ctx, verto_ev *ev)
     int fd = 0;
 
     fd = verto_get_fd(ev);
+    assert(verto_get_fd_state(ev) & VERTO_EV_FLAG_IO_WRITE);
     assert(write(fd, DATA, DATALEN) == DATALEN);
 
     assert(verto_add_io(ctx, VERTO_EV_FLAG_IO_READ, read_cb, fds[0]));

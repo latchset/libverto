@@ -59,6 +59,11 @@ typedef struct {
     verto_proc_status status;
 } verto_child;
 
+typedef struct {
+    int fd;
+    verto_ev_flag state;
+} verto_io;
+
 struct verto_ev {
     verto_ev *next;
     verto_ctx *ctx;
@@ -72,7 +77,7 @@ struct verto_ev {
     size_t depth;
     int deleted;
     union {
-        int fd;
+        verto_io io;
         int signal;
         time_t interval;
         verto_child child;
@@ -625,7 +630,7 @@ verto_add_io(verto_ctx *ctx, verto_ev_flag flags,
     if (fd < 0 || !(flags & (VERTO_EV_FLAG_IO_READ | VERTO_EV_FLAG_IO_WRITE)))
         return NULL;
 
-    doadd(ev, ev->option.fd = fd, VERTO_EV_TYPE_IO);
+    doadd(ev, ev->option.io.fd = fd, VERTO_EV_TYPE_IO);
     return ev;
 }
 
@@ -719,8 +724,14 @@ int
 verto_get_fd(const verto_ev *ev)
 {
     if (ev && (ev->type == VERTO_EV_TYPE_IO))
-        return ev->option.fd;
+        return ev->option.io.fd;
     return -1;
+}
+
+verto_ev_flag
+verto_get_fd_state(const verto_ev *ev)
+{
+    return ev->option.io.state;
 }
 
 time_t
@@ -885,6 +896,11 @@ verto_fire(verto_ev *ev)
             ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
             ev->ev = priv;
         }
+
+        if (ev->type == VERTO_EV_TYPE_IO)
+            ev->option.io.state = VERTO_EV_FLAG_NONE;
+        if (ev->type == VERTO_EV_TYPE_CHILD)
+            ev->option.child.status = 0;
     }
 }
 
@@ -893,4 +909,20 @@ verto_set_proc_status(verto_ev *ev, verto_proc_status status)
 {
     if (ev && ev->type == VERTO_EV_TYPE_CHILD)
         ev->option.child.status = status;
+}
+
+void
+verto_set_fd_state(verto_ev *ev, verto_ev_flag state)
+{
+    /* Filter out only the io flags */
+    state = state & (VERTO_EV_FLAG_IO_READ |
+                     VERTO_EV_FLAG_IO_WRITE |
+                     VERTO_EV_FLAG_IO_ERROR);
+
+    /* Don't report read/write if the socket is closed */
+    if (state & VERTO_EV_FLAG_IO_ERROR)
+        state = VERTO_EV_FLAG_IO_ERROR;
+
+    if (ev && ev->type == VERTO_EV_TYPE_IO)
+        ev->option.io.state = state;
 }
