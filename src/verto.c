@@ -763,6 +763,12 @@ verto_get_proc_status(const verto_ev *ev)
     return ev->option.child.status;
 }
 
+verto_ctx *
+verto_get_ctx(const verto_ev *ev)
+{
+    return ev->ctx;
+}
+
 void
 verto_del(verto_ev *ev)
 {

@@ -492,6 +492,17 @@ verto_proc_status
 verto_get_proc_status(const verto_ev *ev);
 
 /**
+ * Gets the verto_ctx associated with a verto_ev.
+ *
+ * This is a borrowed reference, don't attempt to free it!
+ *
+ * @param ev The verto_ev to retrieve the verto_ctx from.
+ * @return The verto_ctx.
+ */
+verto_ctx *
+verto_get_ctx(const verto_ev *ev);
+
+/**
  * Removes an event from from the event context and frees it.
  *
  * The event and its contents cannot be used after this call.
