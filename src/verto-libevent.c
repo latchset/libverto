@@ -115,14 +115,15 @@ libevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
     struct timeval tv;
     int libeventflags = 0;
 
-    if (*flags & VERTO_EV_FLAG_PERSIST)
+    *flags |= verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
+    if (verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST)
         libeventflags |= EV_PERSIST;
 
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
-        if (*flags & VERTO_EV_FLAG_IO_READ)
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
             libeventflags |= EV_READ;
-        if (*flags & VERTO_EV_FLAG_IO_WRITE)
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
             libeventflags |= EV_WRITE;
         priv = event_new(ctx, verto_get_fd(ev), libeventflags,
                          libevent_callback, (void *) ev);
@@ -148,11 +149,11 @@ libevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
     if (!priv)
         return NULL;
 
-    if (*flags & VERTO_EV_FLAG_PRIORITY_HIGH)
+    if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_HIGH)
         event_priority_set(priv, 0);
-    else if (*flags & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_MEDIUM)
         event_priority_set(priv, 1);
-    else if (*flags & VERTO_EV_FLAG_PRIORITY_LOW)
+    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_LOW)
         event_priority_set(priv, 2);
 
     event_add(priv, timeout);

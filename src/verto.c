@@ -45,6 +45,9 @@
 #define  _str(s) # s
 #define __str(s) _str(s)
 
+/* Remove flags we can emulate */
+#define make_actual(flags) ((flags) & ~VERTO_EV_FLAG_PERSIST)
+
 struct verto_ctx {
     size_t ref;
     verto_mod_ctx *ctx;
@@ -599,7 +602,7 @@ verto_reinitialize(verto_ctx *ctx)
 
     /* Recreate events that were marked forkable */
     for (tmp = ctx->events; tmp; tmp = tmp->next) {
-        tmp->actual = tmp->flags;
+        tmp->actual = make_actual(tmp->flags);
         tmp->ev = ctx->module->funcs->ctx_add(ctx->ctx, tmp, &tmp->actual);
         if (!tmp->ev)
             error = 0;
@@ -612,7 +615,7 @@ verto_reinitialize(verto_ctx *ctx)
     ev = make_ev(ctx, callback, type, flags); \
     if (ev) { \
         set; \
-        ev->actual = ev->flags; \
+        ev->actual = make_actual(ev->flags); \
         ev->ev = ctx->module->funcs->ctx_add(ctx->ctx, ev, &ev->actual); \
         if (!ev->ev) { \
             vfree(ev); \
@@ -896,7 +899,7 @@ verto_fire(verto_ev *ev)
         if (!(ev->flags & VERTO_EV_FLAG_PERSIST) || ev->deleted)
             verto_del(ev);
         else if (!ev->actual & VERTO_EV_FLAG_PERSIST) {
-            ev->actual = ev->flags;
+            ev->actual = make_actual(ev->flags);
             priv = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
             assert(priv); /* TODO: create an error callback */
             ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
