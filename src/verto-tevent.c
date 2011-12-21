@@ -99,6 +99,7 @@ tevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
     time_t interval;
     struct timeval tv;
     uint16_t teventflags = TEVENT_FD_ERROR;
+    struct tevent_fd *tfde;
 
     *flags |= VERTO_EV_FLAG_PERSIST;
     switch (verto_get_type(ev)) {
@@ -107,8 +108,13 @@ tevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
             teventflags |= TEVENT_FD_READ;
         if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
             teventflags |= TEVENT_FD_WRITE;
-        return tevent_add_fd(ctx, ctx, verto_get_fd(ev),
+        tfde = tevent_add_fd(ctx, ctx, verto_get_fd(ev),
                              teventflags, tevent_fd_cb, (void *) ev);
+        if (tfde && (verto_get_flags(ev) & VERTO_EV_FLAG_IO_CLOSE_FD)) {
+            *flags |= VERTO_EV_FLAG_IO_CLOSE_FD;
+            tevent_fd_set_auto_close(tfde);
+        }
+        return tfde;
     case VERTO_EV_TYPE_TIMEOUT:
         *flags &= ~VERTO_EV_FLAG_PERSIST; /* Timeout events don't persist */
         interval = verto_get_interval(ev);

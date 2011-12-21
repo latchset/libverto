@@ -170,6 +170,7 @@ glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
     verto_ev_type type = verto_get_type(ev);
 
     *flags |= verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
+    *flags |= verto_get_flags(ev) & VERTO_EV_FLAG_IO_CLOSE_FD;
 
     gev = g_new0(verto_mod_ev, 1);
     if (!gev)
@@ -184,7 +185,8 @@ glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 #endif
             if (!gev->chan)
                 goto error;
-            g_io_channel_set_close_on_unref(gev->chan, FALSE);
+            g_io_channel_set_close_on_unref(gev->chan,
+                                            *flags & VERTO_EV_FLAG_IO_CLOSE_FD);
 
             if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
                 cond |= G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
