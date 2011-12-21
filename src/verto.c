@@ -46,7 +46,7 @@
 #define __str(s) _str(s)
 
 /* Remove flags we can emulate */
-#define make_actual(flags) ((flags) & ~VERTO_EV_FLAG_PERSIST)
+#define make_actual(flags) ((flags) & ~(VERTO_EV_FLAG_PERSIST|VERTO_EV_FLAG_IO_CLOSE_FD))
 
 struct verto_ctx {
     size_t ref;
@@ -791,6 +791,12 @@ verto_del(verto_ev *ev)
         ev->onfree(ev->ctx, ev);
     ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
     remove_ev(&(ev->ctx->events), ev);
+
+    if ((ev->type == VERTO_EV_TYPE_IO) &&
+        (ev->flags & VERTO_EV_FLAG_IO_CLOSE_FD) &&
+        !(ev->actual & VERTO_EV_FLAG_IO_CLOSE_FD))
+        close(ev->option.io.fd);
+
     vfree(ev);
 }
 

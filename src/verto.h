@@ -65,8 +65,9 @@ typedef enum {
     VERTO_EV_FLAG_IO_READ = 1 << 4,
     VERTO_EV_FLAG_IO_WRITE = 1 << 5,
     VERTO_EV_FLAG_IO_ERROR = 1 << 7,
+    VERTO_EV_FLAG_IO_CLOSE_FD = 1 << 8,
     VERTO_EV_FLAG_REINITIABLE = 1 << 6,
-    _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_ERROR
+    _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_CLOSE_FD
 } verto_ev_flag;
 
 typedef void (verto_callback)(verto_ctx *ctx, verto_ev *ev);
@@ -262,6 +263,8 @@ verto_reinitialize(verto_ctx *ctx);
  * VERTO_EV_FLAG_PERSIST is not provided, the event will be freed automatically
  * after its execution. In either case, you may call verto_del() at any time
  * to prevent the event from executing.
+ * If VERTO_EV_FLAG_IO_CLOSE_FD is provided the passed in fd is automatically
+ * closed when the event is freed with verto_del()
  *
  * NOTE: On Windows, the underlying select() only works with sockets. As such,
  * any attempt to add a non-socket io event on Windows will produce undefined
