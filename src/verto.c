@@ -904,18 +904,20 @@ verto_fire(verto_ev *ev)
     if (ev->depth == 0) {
         if (!(ev->flags & VERTO_EV_FLAG_PERSIST) || ev->deleted)
             verto_del(ev);
-        else if (!ev->actual & VERTO_EV_FLAG_PERSIST) {
-            ev->actual = make_actual(ev->flags);
-            priv = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
-            assert(priv); /* TODO: create an error callback */
-            ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
-            ev->ev = priv;
-        }
+        else {
+            if (!(ev->actual & VERTO_EV_FLAG_PERSIST)) {
+                ev->actual = make_actual(ev->flags);
+                priv = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
+                assert(priv); /* TODO: create an error callback */
+                ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
+                ev->ev = priv;
+            }
 
-        if (ev->type == VERTO_EV_TYPE_IO)
-            ev->option.io.state = VERTO_EV_FLAG_NONE;
-        if (ev->type == VERTO_EV_TYPE_CHILD)
-            ev->option.child.status = 0;
+            if (ev->type == VERTO_EV_TYPE_IO)
+                ev->option.io.state = VERTO_EV_FLAG_NONE;
+            if (ev->type == VERTO_EV_TYPE_CHILD)
+                ev->option.child.status = 0;
+        }
     }
 }
 
