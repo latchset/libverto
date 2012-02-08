@@ -1,3 +1,12 @@
+2012-02-08  Nathaniel McCallum  <npmccallum@redhat.com>
+	* == Release 0.2.3 ==
+	* add external allocator support
+	* add extern "C" to all headers
+	* support getting fd state in callbacks
+	* support getting ctx from ev
+	* add support for auto-closing file descriptors
+	* fix a bug where we wrote to free'd memory
+
 2011-11-11  Nathaniel McCallum  <npmccallum@redhat.com>
 	* == Release 0.2.2 ==
 	* Remove trailing uses of types starting with _
