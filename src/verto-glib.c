@@ -30,10 +30,7 @@ typedef struct {
     GMainContext *context;
     GMainLoop *loop;
 } verto_mod_ctx;
-typedef struct {
-    GSource *src;
-    GIOChannel *chan;
-} verto_mod_ev;
+typedef GSource verto_mod_ev;
 #include <verto-module.h>
 
 /* While glib has signal support in >=2.29, it does not support many
@@ -56,6 +53,46 @@ typedef struct {
                                     | VERTO_EV_TYPE_IDLE \
                                     | HAS_SIGNAL \
                                     | VERTO_EV_TYPE_CHILD)
+
+typedef gboolean
+(*GIOCallback)(gpointer data, GIOCondition condition);
+
+typedef struct GIOSource {
+    GSource  source;
+    GPollFD  fd;
+    gboolean autoclose;
+} GIOSource;
+
+static gboolean
+prepare(GSource *source, gint *timeout)
+{
+    *timeout = -1;
+    return FALSE;
+}
+
+static gboolean
+check(GSource *source)
+{
+    GIOSource *src = (GIOSource*) source;
+    return src->fd.revents & src->fd.events;
+}
+
+static gboolean
+dispatch(GSource *source, GSourceFunc callback, gpointer user_data)
+{
+    GIOSource *src = (GIOSource*) source;
+    return ((GIOCallback) callback)(user_data, src->fd.revents);
+}
+
+static void
+finalize(GSource *source)
+{
+    GIOSource *src = (GIOSource*) source;
+    if (src->autoclose)
+        close(src->fd.fd);
+}
+
+static GSourceFuncs funcs = { prepare, check, dispatch, finalize };
 
 static void *
 glib_convert_(GMainContext *mc, GMainLoop *ml)
@@ -140,7 +177,7 @@ glib_callback(gpointer data)
 }
 
 static gboolean
-glib_callback_io(GIOChannel *source, GIOCondition condition, gpointer data)
+glib_callback_io(gpointer data, GIOCondition condition)
 {
     verto_ev_flag state = VERTO_EV_FLAG_NONE;
 
@@ -162,46 +199,55 @@ glib_callback_child(GPid pid, gint status, gpointer data)
     verto_fire(data);
 }
 
+static void
+glib_ctx_set_flags(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
+{
+    if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_HIGH)
+        g_source_set_priority(evpriv, G_PRIORITY_HIGH);
+    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_MEDIUM)
+        g_source_set_priority(evpriv, G_PRIORITY_DEFAULT_IDLE);
+    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_LOW)
+        g_source_set_priority(evpriv, G_PRIORITY_LOW);
+
+    if (verto_get_type(ev) == VERTO_EV_TYPE_IO) {
+        ((GIOSource*) evpriv)->fd.events = 0;
+
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
+            ((GIOSource*) evpriv)->fd.events |= G_IO_IN  | G_IO_PRI | G_IO_ERR |
+                                                G_IO_HUP | G_IO_NVAL;
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
+            ((GIOSource*) evpriv)->fd.events |= G_IO_OUT | G_IO_ERR |
+                                                G_IO_HUP | G_IO_NVAL;
+    }
+}
+
 static verto_mod_ev *
 glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 {
-    verto_mod_ev *gev = NULL;
-    GIOCondition cond = 0;
+    verto_mod_ev *evpriv = NULL;
     verto_ev_type type = verto_get_type(ev);
 
     *flags |= verto_get_flags(ev) & VERTO_EV_FLAG_PERSIST;
     *flags |= verto_get_flags(ev) & VERTO_EV_FLAG_IO_CLOSE_FD;
 
-    gev = g_new0(verto_mod_ev, 1);
-    if (!gev)
-        return NULL;
-
     switch (type) {
         case VERTO_EV_TYPE_IO:
-#ifdef WIN32
-            gev->chan = g_io_channel_win32_new_socket(verto_get_fd(ev));
-#else
-            gev->chan = g_io_channel_unix_new(verto_get_fd(ev));
-#endif
-            if (!gev->chan)
-                goto error;
-            g_io_channel_set_close_on_unref(gev->chan,
-                                            *flags & VERTO_EV_FLAG_IO_CLOSE_FD);
-
-            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
-                cond |= G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
-                cond |= G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-            gev->src = g_io_create_watch(gev->chan, cond);
+            evpriv = g_source_new(&funcs, sizeof(GIOSource));
+            if (evpriv) {
+                ((GIOSource*) evpriv)->fd.fd = verto_get_fd(ev);
+                ((GIOSource*) evpriv)->autoclose =
+                        *flags & VERTO_EV_FLAG_IO_CLOSE_FD;
+                g_source_add_poll(evpriv, &((GIOSource*) evpriv)->fd);
+            }
             break;
         case VERTO_EV_TYPE_TIMEOUT:
-            gev->src = g_timeout_source_new(verto_get_interval(ev));
+            evpriv = g_timeout_source_new(verto_get_interval(ev));
             break;
         case VERTO_EV_TYPE_IDLE:
-            gev->src = g_idle_source_new();
+            evpriv = g_idle_source_new();
             break;
         case VERTO_EV_TYPE_CHILD:
-            gev->src = g_child_watch_source_new(verto_get_proc(ev));
+            evpriv = g_child_watch_source_new(verto_get_proc(ev));
             break;
         case VERTO_EV_TYPE_SIGNAL:
 /* While glib has signal support in >=2.29, it does not support many
@@ -210,7 +256,7 @@ glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 #if GLIB_MAJOR_VERSION >= 999
 #if GLIB_MINOR_VERSION >= 29
 #ifdef G_OS_UNIX /* Not supported on Windows */
-            gev->src = g_unix_signal_source_new(verto_get_signal(ev));
+            evpriv = g_unix_signal_source_new(verto_get_signal(ev));
             break;
 #endif
 #endif /* GLIB_MINOR_VERSION >= 29 */
@@ -219,38 +265,30 @@ glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
             return NULL; /* Not supported */
     }
 
-    if (!gev->src)
+    if (!evpriv)
         goto error;
 
     if (type == VERTO_EV_TYPE_IO)
-        g_source_set_callback(gev->src, (GSourceFunc) glib_callback_io, (void *) ev, NULL);
+        g_source_set_callback(evpriv, (GSourceFunc) glib_callback_io,
+                              (void *) ev, NULL);
     else if (type == VERTO_EV_TYPE_CHILD)
-        g_source_set_callback(gev->src, (GSourceFunc) glib_callback_child, (void *) ev, NULL);
+        g_source_set_callback(evpriv, (GSourceFunc) glib_callback_child,
+                              (void *) ev, NULL);
     else
-        g_source_set_callback(gev->src, glib_callback, (void *) ev, NULL);
+        g_source_set_callback(evpriv, glib_callback, (void *) ev, NULL);
 
-    if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_HIGH)
-        g_source_set_priority(gev->src, G_PRIORITY_HIGH);
-    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_MEDIUM)
-        g_source_set_priority(gev->src, G_PRIORITY_DEFAULT_IDLE);
-    else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_LOW)
-        g_source_set_priority(gev->src, G_PRIORITY_LOW);
+    glib_ctx_set_flags(ctx, ev, evpriv);
 
-    g_source_set_can_recurse(gev->src, FALSE);
-    if (g_source_attach(gev->src, ctx->context) == 0)
+    g_source_set_can_recurse(evpriv, FALSE);
+    if (g_source_attach(evpriv, ctx->context) == 0)
         goto error;
 
-    return gev;
+    return evpriv;
 
     error:
-        if (gev) {
-            if (gev->chan)
-                g_io_channel_unref(gev->chan);
-            if (gev->src) {
-                g_source_destroy(gev->src);
-                g_source_unref(gev->src);
-            }
-            g_free(gev);
+        if (evpriv) {
+            g_source_destroy(evpriv);
+            g_source_unref(evpriv);
         }
         return NULL;
 }
@@ -261,18 +299,11 @@ glib_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
     if (!ev)
         return;
 
-    if (evpriv->chan)
-        g_io_channel_unref(evpriv->chan);
-    if (evpriv->src) {
-        g_source_destroy(evpriv->src);
-        g_source_unref(evpriv->src);
-    }
-
-    g_free(evpriv);
+    g_source_destroy(evpriv);
+    g_source_unref(evpriv);
 }
 
 #define glib_ctx_reinitialize NULL
-#define glib_ctx_set_flags NULL
 VERTO_MODULE(glib, g_main_context_default, VERTO_GLIB_SUPPORTED_TYPES);
 
 verto_ctx *
