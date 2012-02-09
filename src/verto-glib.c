@@ -272,6 +272,7 @@ glib_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 }
 
 #define glib_ctx_reinitialize NULL
+#define glib_ctx_set_flags NULL
 VERTO_MODULE(glib, g_main_context_default, VERTO_GLIB_SUPPORTED_TYPES);
 
 verto_ctx *

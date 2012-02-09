@@ -170,6 +170,7 @@ libev_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
     free(evpriv);
 }
 
+#define libev_ctx_set_flags NULL
 VERTO_MODULE(libev, ev_loop_new,
              VERTO_EV_TYPE_IO |
              VERTO_EV_TYPE_TIMEOUT |

@@ -140,6 +140,7 @@ tevent_ctx_del(verto_mod_ctx *priv, const verto_ev *ev, verto_mod_ev *evpriv)
 #define tevent_ctx_break NULL
 #define tevent_ctx_run NULL
 #define tevent_ctx_default NULL
+#define tevent_ctx_set_flags NULL
 VERTO_MODULE(tevent, g_main_context_default,
              VERTO_EV_TYPE_IO |
              VERTO_EV_TYPE_TIMEOUT |

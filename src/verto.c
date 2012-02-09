@@ -723,6 +723,29 @@ verto_get_flags(const verto_ev *ev)
     return ev->flags;
 }
 
+void
+verto_set_flags(verto_ev *ev, verto_ev_flag flags)
+{
+    if (!ev)
+        return;
+
+    ev->flags  &= ~_VERTO_EV_FLAG_MUTABLE_MASK;
+    ev->flags  |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
+
+    /* If setting flags isn't supported, just rebuild the event */
+    if (!ev->ctx->module->funcs->ctx_set_flags) {
+        ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
+        ev->actual = make_actual(ev->flags);
+        ev->ev = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
+        assert(ev->ev); /* Here is the main reason why modules should */
+        return;         /* implement set_flags(): we cannot fail gracefully. */
+    }
+
+    ev->actual &= ~_VERTO_EV_FLAG_MUTABLE_MASK;
+    ev->actual |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
+    ev->ctx->module->funcs->ctx_set_flags(ev->ctx->ctx, ev, ev->ev);
+}
+
 int
 verto_get_fd(const verto_ev *ev)
 {

@@ -67,6 +67,11 @@ typedef enum {
     VERTO_EV_FLAG_IO_ERROR = 1 << 7,
     VERTO_EV_FLAG_IO_CLOSE_FD = 1 << 8,
     VERTO_EV_FLAG_REINITIABLE = 1 << 6,
+    _VERTO_EV_FLAG_MUTABLE_MASK = VERTO_EV_FLAG_PRIORITY_LOW
+                                  | VERTO_EV_FLAG_PRIORITY_MEDIUM
+                                  | VERTO_EV_FLAG_PRIORITY_HIGH
+                                  | VERTO_EV_FLAG_IO_READ
+                                  | VERTO_EV_FLAG_IO_WRITE,
     _VERTO_EV_FLAG_MAX = VERTO_EV_FLAG_IO_CLOSE_FD
 } verto_ev_flag;
 
@@ -428,11 +433,30 @@ verto_get_type(const verto_ev *ev);
  * @see verto_add_idle()
  * @see verto_add_signal()
  * @see verto_add_child()
+ * @see verto_set_flags()
  * @param ev The verto_ev
  * @return The verto_ev type
  */
 verto_ev_flag
 verto_get_flags(const verto_ev *ev);
+
+/**
+ * Sets the flags associated with the given verto_ev.
+ *
+ * See _VERTO_EV_FLAG_MUTABLE_MASK for the flags that can be changed
+ * with this function. All others will be ignored.
+ *
+ * @see verto_add_io()
+ * @see verto_add_timeout()
+ * @see verto_add_idle()
+ * @see verto_add_signal()
+ * @see verto_add_child()
+ * @see verto_get_flags()
+ * @param ev The verto_ev
+ * @param flags The flags for the event
+ */
+void
+verto_set_flags(verto_ev *ev, verto_ev_flag flags);
 
 /**
  * Gets the file descriptor associated with a read/write verto_ev.
