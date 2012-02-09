@@ -94,6 +94,22 @@ libev_callback(EV_P_ ev_watcher *w, int revents)
     verto_fire(w->data);
 }
 
+static void
+libev_ctx_set_flags(verto_mod_ctx *ctx, const verto_ev *ev,
+                    verto_mod_ev *evpriv)
+{
+    if (verto_get_type(ev) == VERTO_EV_TYPE_IO) {
+        int events = EV_NONE;
+
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
+            events |= EV_READ;
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
+            events |= EV_WRITE;
+
+        ev_io_set(((ev_io*) evpriv), verto_get_fd(ev), events);
+    }
+}
+
 #define setuptype(type, ...) \
     w.type = malloc(sizeof(ev_ ## type)); \
     if (w.type) { \
@@ -114,17 +130,13 @@ libev_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
        ev_child *child;
     } w;
     ev_tstamp interval;
-    int events = EV_NONE;
+
 
     w.watcher = NULL;
     *flags |= VERTO_EV_FLAG_PERSIST;
     switch (verto_get_type(ev)) {
         case VERTO_EV_TYPE_IO:
-            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
-                events |= EV_READ;
-            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
-                events |= EV_WRITE;
-            setuptype(io, libev_callback, verto_get_fd(ev), events);
+            setuptype(io, libev_callback, verto_get_fd(ev), EV_NONE);
         case VERTO_EV_TYPE_TIMEOUT:
             interval = ((ev_tstamp) verto_get_interval(ev)) / 1000.0;
             setuptype(timer, libev_callback, interval, interval);
@@ -139,8 +151,10 @@ libev_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
             break; /* Not supported */
     }
 
-    if (w.watcher)
+    if (w.watcher) {
         w.watcher->data = (void*) ev;
+        libev_ctx_set_flags(ctx, ev, w.watcher);
+    }
     return w.watcher;
 }
 
@@ -170,7 +184,6 @@ libev_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
     free(evpriv);
 }
 
-#define libev_ctx_set_flags NULL
 VERTO_MODULE(libev, ev_loop_new,
              VERTO_EV_TYPE_IO |
              VERTO_EV_TYPE_TIMEOUT |
