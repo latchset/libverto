@@ -92,27 +92,39 @@ tevent_signal_cb(struct tevent_context *c, struct tevent_signal *e,
     verto_fire(data);
 }
 
+static void
+tevent_ctx_set_flags(verto_mod_ctx *ctx, const verto_ev *ev,
+                     verto_mod_ev *evpriv)
+{
+    if (verto_get_type(ev) == VERTO_EV_TYPE_IO) {
+        uint16_t teventflags = TEVENT_FD_ERROR;
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
+            teventflags |= TEVENT_FD_READ;
+        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
+            teventflags |= TEVENT_FD_WRITE;
+        tevent_fd_set_flags(evpriv, teventflags);
+    }
+}
+
 static verto_mod_ev *
 tevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 
 {
     time_t interval;
     struct timeval tv;
-    uint16_t teventflags = TEVENT_FD_ERROR;
     struct tevent_fd *tfde;
 
     *flags |= VERTO_EV_FLAG_PERSIST;
     switch (verto_get_type(ev)) {
     case VERTO_EV_TYPE_IO:
-        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
-            teventflags |= TEVENT_FD_READ;
-        if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
-            teventflags |= TEVENT_FD_WRITE;
-        tfde = tevent_add_fd(ctx, ctx, verto_get_fd(ev),
-                             teventflags, tevent_fd_cb, (void *) ev);
-        if (tfde && (verto_get_flags(ev) & VERTO_EV_FLAG_IO_CLOSE_FD)) {
-            *flags |= VERTO_EV_FLAG_IO_CLOSE_FD;
-            tevent_fd_set_auto_close(tfde);
+        tfde = tevent_add_fd(ctx, ctx, verto_get_fd(ev), TEVENT_FD_ERROR,
+                             tevent_fd_cb, (void *) ev);
+        if (tfde) {
+            tevent_ctx_set_flags(ctx, ev, tfde);
+            if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_CLOSE_FD) {
+                *flags |= VERTO_EV_FLAG_IO_CLOSE_FD;
+                tevent_fd_set_auto_close(tfde);
+            }
         }
         return tfde;
     case VERTO_EV_TYPE_TIMEOUT:
@@ -140,7 +152,6 @@ tevent_ctx_del(verto_mod_ctx *priv, const verto_ev *ev, verto_mod_ev *evpriv)
 #define tevent_ctx_break NULL
 #define tevent_ctx_run NULL
 #define tevent_ctx_default NULL
-#define tevent_ctx_set_flags NULL
 VERTO_MODULE(tevent, g_main_context_default,
              VERTO_EV_TYPE_IO |
              VERTO_EV_TYPE_TIMEOUT |
