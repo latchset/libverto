@@ -17,6 +17,7 @@ m4_ifdef([AM_SILENT_RULES], [
   AC_SUBST(AM_DEFAULT_VERBOSITY)
 ])
 
+PKG_PROG_PKG_CONFIG
 AC_CHECK_LIB([dl],[dlopen])
 
 AC_ARG_WITH([pthread],
