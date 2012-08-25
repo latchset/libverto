@@ -14,12 +14,14 @@ ltmain.sh
 Makefile
 Makefile.in
 missing
+test-driver
 
 *.la
 *.lo
 *.o
 *.log
 *.pc
+*.trs
 
 tests/idle
 tests/timeout
