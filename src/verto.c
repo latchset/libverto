@@ -96,7 +96,24 @@ struct module_record {
     verto_ctx *defctx;
 };
 
+
+#ifdef BUILTIN_MODULE
+#define _MODTABLE(n) verto_module_table_ ## n
+#define MODTABLE(n) _MODTABLE(n)
+/*
+ * This symbol can be used when embedding verto.c in a library along with a
+ * built-in private module, to preload the module instead of dynamically
+ * linking it in later.  Define to verto_module_table_<modulename>.
+ */
+extern verto_module MODTABLE(BUILTIN_MODULE);
+static module_record builtin_record = {
+    NULL, &MODTABLE(BUILTIN_MODULE), NULL, "", NULL
+};
+static module_record *loaded_modules = &builtin_record;
+#else
 static module_record *loaded_modules;
+#endif
+
 static void *(*resize_cb)(void *mem, size_t size);
 static int resize_cb_hierarchical;
 
@@ -118,6 +135,7 @@ vresize(void *mem, size_t size)
     return (*resize_cb)(mem, size);
 }
 
+#ifndef BUILTIN_MODULE
 static int
 int_vasprintf(char **strp, const char *fmt, va_list ap) {
     va_list apc;
@@ -319,14 +337,17 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
     closedir(dir);
     return *record != NULL;
 }
+#endif
 
 static int
 load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
 {
     int success = 0;
+#ifndef BUILTIN_MODULE
     char *prefix = NULL;
     char *suffix = NULL;
     char *tmp = NULL;
+#endif
 
     /* Check the cache */
     mutex_lock(&loaded_modules_mutex);
@@ -349,6 +370,7 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
     }
     mutex_unlock(&loaded_modules_mutex);
 
+#ifndef BUILTIN_MODULE
     if (!module_get_filename_for_symbol(verto_convert_module, &prefix))
         return 0;
 
@@ -402,14 +424,14 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
                 success = do_load_dir(dname, prefix, suffix, 1, reqtypes,
                                       record);
                 if (!success) {
-#ifdef DEFAULT_LIBRARY
+#ifdef DEFAULT_MODULE
                     /* Attempt to find the default module */
-                    success = load_module(DEFAULT_LIBRARY, reqtypes, record);
+                    success = load_module(DEFAULT_MODULE, reqtypes, record);
                     if (!success)
-#endif /* DEFAULT_LIBRARY */
-                    /* Attempt to load any plugin (we're desperate) */
-                    success = do_load_dir(dname, prefix, suffix, 0,
-                                          reqtypes, record);
+#endif /* DEFAULT_MODULE */
+                        /* Attempt to load any plugin (we're desperate) */
+                        success = do_load_dir(dname, prefix, suffix, 0,
+                                              reqtypes, record);
                 }
             }
 
@@ -419,6 +441,7 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
 
     free(suffix);
     free(prefix);
+#endif /* BUILTIN_MODULE */
     return success;
 }
 

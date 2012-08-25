@@ -30,7 +30,15 @@
 
 #include <verto.h>
 
+
 static char *MODULES[] = {
+#ifdef BUILTIN_MODULE
+#define __str(s) #s
+#define _str(s) __str(s)
+    _str(BUILTIN_MODULE),
+#undef _str
+#undef __str
+#endif
 #ifdef HAVE_GLIB
     "glib",
 #endif

@@ -1,19 +1,19 @@
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libverto.pc
 
-if BUILD_GLIB
+if MODULE_GLIB
 pkgconfig_DATA += libverto-glib.pc
 endif
 
-if BUILD_LIBEV
+if MODULE_LIBEV
 pkgconfig_DATA += libverto-libev.pc
 endif
 
-if BUILD_LIBEVENT
+if MODULE_LIBEVENT
 pkgconfig_DATA += libverto-libevent.pc
 endif
 
-if BUILD_TEVENT
+if MODULE_TEVENT
 pkgconfig_DATA += libverto-tevent.pc
 endif
 

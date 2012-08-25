@@ -3,16 +3,16 @@ LDADD = $(abs_top_builddir)/src/libverto.la
 AM_LDFLAGS  = -rpath $(abs_top_builddir)/src/.libs
 AM_CFLAGS = -Wall -I$(abs_top_srcdir)/src
 
-if BUILD_GLIB
+if MODULE_GLIB
 AM_CFLAGS += -DHAVE_GLIB=1 
 endif
-if BUILD_LIBEV
+if MODULE_LIBEV
 AM_CFLAGS += -DHAVE_LIBEV=1 
 endif
-if BUILD_LIBEVENT
+if MODULE_LIBEVENT
 AM_CFLAGS += -DHAVE_LIBEVENT=1 
 endif
-if BUILD_TEVENT
+if MODULE_TEVENT
 AM_CFLAGS += -DHAVE_TEVENT=1 
 endif
 
