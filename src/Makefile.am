@@ -1,5 +1,7 @@
 AM_CFLAGS = -Wall -Wdeclaration-after-statement
 AM_LDFLAGS = -version-info 1:0:0
+EXTRA_DIST = libverto.symbols libverto-glib.symbols libverto-libev.symbols \
+             libverto-libevent.symbols libverto-tevent.symbols
 
 include_HEADERS     = verto.h verto-module.h
 noinst_HEADERS      = module.h
