@@ -12,7 +12,7 @@ lib_LTLIBRARIES     = libverto.la
 
 libverto_la_SOURCES = verto.c module.c verto.h
 libverto_la_CFLAGS  = $(AM_CFLAGS) $(PTHREAD_CFLAGS)
-libverto_la_LIBADD  = $(AM_LIBS) $(LIBS) $(PTHREAD_LIBS)
+libverto_la_LDFLAGS = $(AM_LDFLAGS) $(LIBS) $(PTHREAD_LIBS)
 
 # glib
 if BUILD_GLIB
