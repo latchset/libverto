@@ -1,6 +1,14 @@
+2012-08-25  Nathaniel McCallum  <npmccallum@redhat.com>
+	* == Release 0.2.5 ==
+	* fix libev's set_flags() implementation
+	* add AIX dlopen() support
+	* export symbols based on symbol list files
+	* add support for building in a static module
+	* add support for specifying default module
+
 2012-02-09  Nathaniel McCallum  <npmccallum@redhat.com>
-    * == Release 0.2.4 ==
-    * add verto_set_flags()
+	* == Release 0.2.4 ==
+	* add verto_set_flags()
 
 2012-02-08  Nathaniel McCallum  <npmccallum@redhat.com>
 	* == Release 0.2.3 ==
