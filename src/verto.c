@@ -103,7 +103,7 @@ struct module_record {
 /*
  * This symbol can be used when embedding verto.c in a library along with a
  * built-in private module, to preload the module instead of dynamically
- * linking it in later.  Define to verto_module_table_<modulename>.
+ * linking it in later.  Define to <modulename>.
  */
 extern verto_module MODTABLE(BUILTIN_MODULE);
 static module_record builtin_record = {
