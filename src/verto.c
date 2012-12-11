@@ -861,7 +861,7 @@ verto_convert_module(const verto_module *module, int deflt, verto_mod_ctx *mctx)
     module_record *mr;
 
     if (!module)
-        goto error;
+        return NULL;
 
     if (deflt) {
         mutex_lock(&loaded_modules_mutex);
