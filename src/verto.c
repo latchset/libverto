@@ -45,6 +45,8 @@
 #define  _str(s) # s
 #define __str(s) _str(s)
 
+#define MUTABLE(flags) (flags & _VERTO_EV_FLAG_MUTABLE_MASK)
+
 /* Remove flags we can emulate */
 #define make_actual(flags) ((flags) & ~(VERTO_EV_FLAG_PERSIST|VERTO_EV_FLAG_IO_CLOSE_FD))
 
@@ -752,8 +754,12 @@ verto_set_flags(verto_ev *ev, verto_ev_flag flags)
     if (!ev)
         return;
 
+    /* No modification is needed, so do nothing. */
+    if (MUTABLE(ev->flags) == MUTABLE(flags))
+        return;
+
     ev->flags  &= ~_VERTO_EV_FLAG_MUTABLE_MASK;
-    ev->flags  |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
+    ev->flags  |= MUTABLE(flags);
 
     /* If setting flags isn't supported, just rebuild the event */
     if (!ev->ctx->module->funcs->ctx_set_flags) {
@@ -765,7 +771,7 @@ verto_set_flags(verto_ev *ev, verto_ev_flag flags)
     }
 
     ev->actual &= ~_VERTO_EV_FLAG_MUTABLE_MASK;
-    ev->actual |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
+    ev->actual |= MUTABLE(flags);
     ev->ctx->module->funcs->ctx_set_flags(ev->ctx->ctx, ev, ev->ev);
 }
 

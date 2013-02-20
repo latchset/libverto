@@ -444,7 +444,8 @@ verto_get_flags(const verto_ev *ev);
  * Sets the flags associated with the given verto_ev.
  *
  * See _VERTO_EV_FLAG_MUTABLE_MASK for the flags that can be changed
- * with this function. All others will be ignored.
+ * with this function. All others will be ignored. If the flags specified
+ * are the same as the flags the event already has, this function is a no-op.
  *
  * @see verto_add_io()
  * @see verto_add_timeout()
