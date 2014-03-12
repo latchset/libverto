@@ -43,8 +43,8 @@ lib_LTLIBRARIES += libverto-libev.la
 include_HEADERS += verto-libev.h
 libverto_libev_la_SOURCES = verto-libev.c
 libverto_libev_la_LIBADD  = libverto.la
-libverto_libev_la_CFLAGS  = $(AM_CFLAGS) $(libev_CFLAGS)
-libverto_libev_la_LDFLAGS = $(AM_LDFLAGS) $(libev_LIBS) \
+libverto_libev_la_CFLAGS  = $(AM_CFLAGS)
+libverto_libev_la_LDFLAGS = $(AM_LDFLAGS) -lev \
                             -export-symbols $(srcdir)/libverto-libev.symbols
 endif
 

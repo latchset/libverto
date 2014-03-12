@@ -146,8 +146,14 @@ if test x$WITH_GLIB != xno; then
 fi
 
 if test x$WITH_LIBEV != xno; then
-  PKG_CHECK_MODULES([libev], [libev], [BUILD_LIBEV=$WITH_LIBEV],
-                    [test x$WITH_LIBEV != xauto && AC_MSG_ERROR("libev not found")])
+  AC_CHECK_HEADER(
+    [ev.h],
+    AC_CHECK_LIB(
+      [ev], [ev_loop_new], [BUILD_LIBEV=$WITH_LIBEV],
+      [test x$WITH_LIBEV != xauto && AC_MSG_ERROR("libev not found")]
+    ),
+    [test x$WITH_LIBEV != xauto && AC_MSG_ERROR("ev.h not found")]
+  )
   if test x$BUILD_LIBEV == xauto; then
     BUILD_LIBEV=yes
   fi
