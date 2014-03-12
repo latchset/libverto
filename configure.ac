@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(libverto, 0.2.5)
+AC_INIT(libverto, 0.2.6)
 
 AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([1.11])
