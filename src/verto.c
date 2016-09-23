@@ -749,6 +749,7 @@ verto_get_flags(const verto_ev *ev)
 void
 verto_set_flags(verto_ev *ev, verto_ev_flag flags)
 {
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
     if (!ev)
         return;
 
@@ -756,7 +757,9 @@ verto_set_flags(verto_ev *ev, verto_ev_flag flags)
     ev->flags  |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
 
     /* If setting flags isn't supported, just rebuild the event */
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
     if (!ev->ctx->module->funcs->ctx_set_flags) {
+        fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
         ev->ctx->module->funcs->ctx_del(ev->ctx->ctx, ev, ev->ev);
         ev->actual = make_actual(ev->flags);
         ev->ev = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
@@ -764,6 +767,7 @@ verto_set_flags(verto_ev *ev, verto_ev_flag flags)
         return;         /* implement set_flags(): we cannot fail gracefully. */
     }
 
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
     ev->actual &= ~_VERTO_EV_FLAG_MUTABLE_MASK;
     ev->actual |= flags & _VERTO_EV_FLAG_MUTABLE_MASK;
     ev->ctx->module->funcs->ctx_set_flags(ev->ctx->ctx, ev, ev->ev);
@@ -943,15 +947,20 @@ verto_fire(verto_ev *ev)
 {
     void *priv;
 
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
+
     ev->depth++;
     ev->callback(ev->ctx, ev);
     ev->depth--;
 
     if (ev->depth == 0) {
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
         if (!(ev->flags & VERTO_EV_FLAG_PERSIST) || ev->deleted)
             verto_del(ev);
         else {
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
             if (!(ev->actual & VERTO_EV_FLAG_PERSIST)) {
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
                 ev->actual = make_actual(ev->flags);
                 priv = ev->ctx->module->funcs->ctx_add(ev->ctx->ctx, ev, &ev->actual);
                 assert(priv); /* TODO: create an error callback */

@@ -67,6 +67,8 @@ tevent_fd_cb(struct tevent_context *c, struct tevent_fd *e,
 {
     verto_ev_flag state = VERTO_EV_FLAG_NONE;
 
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
+
     if (fl & TEVENT_FD_READ)
         state |= VERTO_EV_FLAG_IO_READ;
     if (fl & TEVENT_FD_WRITE)
@@ -96,13 +98,19 @@ static void
 tevent_ctx_set_flags(verto_mod_ctx *ctx, const verto_ev *ev,
                      verto_mod_ev *evpriv)
 {
+    fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
     if (verto_get_type(ev) == VERTO_EV_TYPE_IO) {
         uint16_t teventflags = TEVENT_FD_ERROR;
+        uint16_t oldflags = 0;
+        fprintf(stderr, "%s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__);
         if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_READ)
             teventflags |= TEVENT_FD_READ;
         if (verto_get_flags(ev) & VERTO_EV_FLAG_IO_WRITE)
             teventflags |= TEVENT_FD_WRITE;
+	oldflags = tevent_fd_get_flags(evpriv);
         tevent_fd_set_flags(evpriv, teventflags);
+	fprintf(stderr, "flags (%p %p): %d => %d => %d\n", ev, evpriv,
+	        oldflags, teventflags, tevent_fd_get_flags(evpriv));
     }
 }
 
