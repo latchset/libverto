@@ -1,0 +1,19 @@
+sudo: required
+
+# not necessary, but less confusing if defined
+language: C
+
+services:
+  - docker
+
+env:
+  - DISTRO=debian:sid
+  - DISTRO=fedora:rawhide
+  - DISTRO=centos:7
+
+script:
+  - >
+    docker run
+    -v `pwd`:/tmp/build
+    -w /tmp/build
+    $DISTRO /bin/bash -ex .travis.sh
