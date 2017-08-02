@@ -22,8 +22,6 @@
  * SOFTWARE.
  */
 
-#define _GNU_SOURCE /* For asprintf() */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -496,6 +494,8 @@ remove_ev(verto_ev **origin, verto_ev *item)
 static void
 signal_ignore(verto_ctx *ctx, verto_ev *ev)
 {
+    (void) ctx;
+    (void) ev;
 }
 
 verto_ctx *

@@ -55,6 +55,9 @@ exit_cb(verto_ctx *ctx, verto_ev *ev)
 void
 cb(verto_ctx *ctx, verto_ev *ev)
 {
+    (void) ctx;
+    (void) ev;
+
     count++;
 }
 

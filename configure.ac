@@ -3,6 +3,11 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.59)
 AC_INIT(libverto, 0.2.6)
 
+m4_ifdef([AC_USE_SYSTEM_EXTENSIONS],
+    [AC_USE_SYSTEM_EXTENSIONS],
+    [AC_GNU_SOURCE])
+CFLAGS="$CFLAGS -Wall -Wextra"
+
 AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([1.11])
 

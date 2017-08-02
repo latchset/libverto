@@ -41,6 +41,8 @@ static int callcount = 0;
 static void
 timeout_cb(verto_ctx *ctx, verto_ev *ev)
 {
+    (void) ev;
+
     printf("ERROR: Timeout!\n");
     if (fds[0] >= 0)
         close(fds[0]);

@@ -57,6 +57,7 @@ elapsed(time_t min, time_t max)
 static void
 exit_cb(verto_ctx *ctx, verto_ev *ev)
 {
+    (void) ev;
     assert(callcount == 3);
     verto_break(ctx);
 }

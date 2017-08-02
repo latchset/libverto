@@ -86,7 +86,6 @@ dladdr(void* s, Dl_info* i)
     return 0;
 }
 #else
-#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
@@ -101,7 +100,10 @@ module_symbol_is_present(const char *modname, const char *symbname)
     return (GetProcAddress(GetModuleHandle(modname), symbname) != NULL ||
             GetProcAddress(GetModuleHandle(NULL), symbname) != NULL);
 #else  /* WIN32 */
-    void* mod = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL);
+    void *mod;
+    (void) modname;
+
+    mod = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL);
     if (mod) {
         void* sym = dlsym(mod, symbname);
         dlclose(mod);

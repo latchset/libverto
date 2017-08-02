@@ -66,6 +66,8 @@ typedef struct GIOSource {
 static gboolean
 prepare(GSource *source, gint *timeout)
 {
+    (void) source;
+
     *timeout = -1;
     return FALSE;
 }
@@ -92,7 +94,7 @@ finalize(GSource *source)
         close(src->fd.fd);
 }
 
-static GSourceFuncs funcs = { prepare, check, dispatch, finalize };
+static GSourceFuncs funcs = { prepare, check, dispatch, finalize, NULL, NULL };
 
 static void *
 glib_convert_(GMainContext *mc, GMainLoop *ml)
@@ -195,6 +197,8 @@ glib_callback_io(gpointer data, GIOCondition condition)
 static void
 glib_callback_child(GPid pid, gint status, gpointer data)
 {
+    (void) pid;
+
     verto_set_proc_status(data, status);
     verto_fire(data);
 }
@@ -202,6 +206,8 @@ glib_callback_child(GPid pid, gint status, gpointer data)
 static void
 glib_ctx_set_flags(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 {
+    (void) ctx;
+
     if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_HIGH)
         g_source_set_priority(evpriv, G_PRIORITY_HIGH);
     else if (verto_get_flags(ev) & VERTO_EV_FLAG_PRIORITY_MEDIUM)
@@ -296,6 +302,8 @@ glib_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 static void
 glib_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 {
+    (void) ctx;
+
     if (!ev)
         return;
 

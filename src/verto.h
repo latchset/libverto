@@ -33,6 +33,7 @@
 typedef HANDLE verto_proc;
 typedef DWORD verto_proc_status;
 #else
+#include <sys/types.h>
 typedef pid_t verto_proc;
 typedef int verto_proc_status;
 #endif

@@ -94,6 +94,8 @@ libevent_callback(evutil_socket_t socket, short type, void *data)
 {
     verto_ev_flag state = VERTO_EV_FLAG_NONE;
 
+    (void) socket;
+
     if (type & EV_READ)
         state |= VERTO_EV_FLAG_IO_READ;
     if (type & EV_WRITE)
@@ -163,6 +165,9 @@ libevent_ctx_add(verto_mod_ctx *ctx, const verto_ev *ev, verto_ev_flag *flags)
 static void
 libevent_ctx_del(verto_mod_ctx *ctx, const verto_ev *ev, verto_mod_ev *evpriv)
 {
+    (void) ctx;
+    (void) ev;
+
     event_del(evpriv);
     event_free(evpriv);
 }

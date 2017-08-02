@@ -29,6 +29,8 @@ static int callcount;
 void
 exit_cb(verto_ctx *ctx, verto_ev *ev)
 {
+    (void) ctx;
+    (void) ev;
     retval = 1;
     switch (callcount) {
         case 0:
@@ -55,6 +57,8 @@ exit_cb(verto_ctx *ctx, verto_ev *ev)
 
 void
 onfree(verto_ctx *ctx, verto_ev *ev) {
+    (void) ctx;
+    (void) ev;
     ++callcount;
 }
 
