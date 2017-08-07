@@ -89,6 +89,8 @@ main(int argc, char **argv)
             break;
     }
 
+    verto_cleanup();
+
     return retval;
 }
 

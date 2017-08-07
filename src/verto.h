@@ -218,6 +218,19 @@ void
 verto_free(verto_ctx *ctx);
 
 /**
+ * Frees global state.
+ *
+ * Remove and free all allocated global state.  Call only when no further
+ * contexts exist and all threads have exited.
+ *
+ * @see verto_new()
+ * @see verto_free()
+ * @see verto_default()
+ */
+void
+verto_cleanup(void);
+
+/**
  * Run the verto_ctx forever, or at least until verto_break() is called.
  *
  * @see verto_break()

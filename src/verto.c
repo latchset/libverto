@@ -293,6 +293,7 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
     tblname = int_get_table_name_from_filename(filename);
     if (!tblname) {
         free(tblname);
+        free(tmp->filename);
         vfree(tmp);
         return 0;
     }
@@ -306,6 +307,7 @@ do_load_file(const char *filename, int reqsym, verto_ev_type reqtypes,
         free(error);
         module_close(tmp->dll);
         free(tblname);
+        free(tmp->filename);
         vfree(tmp);
         return 0;
     }
@@ -593,6 +595,24 @@ verto_free(verto_ctx *ctx)
         ctx->module->funcs->ctx_free(ctx->ctx);
 
     vfree(ctx);
+}
+
+void
+verto_cleanup(void)
+{
+    mutex_lock(&loaded_modules_mutex);
+
+    for (module_record *record = loaded_modules; record;
+         record = record->next) {
+        module_close(record->dll);
+        free(record->filename);
+    }
+
+    vfree(loaded_modules);
+    loaded_modules = NULL;
+
+    mutex_unlock(&loaded_modules_mutex);
+    mutex_destroy(&loaded_modules_mutex);
 }
 
 void
