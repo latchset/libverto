@@ -119,11 +119,34 @@ static int resize_cb_hierarchical;
 
 #ifdef HAVE_PTHREAD
 static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define mutex_lock(x) pthread_mutex_lock(x)
-#define mutex_unlock(x) pthread_mutex_unlock(x)
+#define mutex_lock(x) { \
+        int c = pthread_mutex_lock(x); \
+        if (c != 0) { \
+            fprintf(stderr, "pthread_mutex_lock returned %d (%s) in %s", \
+                    c, strerror(c), __FUNCTION__); \
+        } \
+        assert(c == 0); \
+    }
+#define mutex_unlock(x) { \
+        int c = pthread_mutex_unlock(x); \
+        if (c != 0) { \
+            fprintf(stderr, "pthread_mutex_unlock returned %d (%s) in %s", \
+                    c, strerror(c), __FUNCTION__); \
+        } \
+        assert(c == 0); \
+    }
+#define mutex_destroy(x) { \
+        int c = pthread_mutex_destroy(x); \
+        if (c != 0) { \
+            fprintf(stderr, "pthread_mutex_destroy returned %d (%s) in %s", \
+                    c, strerror(c), __FUNCTION__); \
+        } \
+        assert(c == 0); \
+    }
 #else
 #define mutex_lock(x)
 #define mutex_unlock(x)
+#define mutex_destroy(x)
 #endif
 
 #define vfree(mem) vresize(mem, 0)
