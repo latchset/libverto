@@ -7,7 +7,7 @@ if [ -f /etc/debian_version ]; then
 elif [ -f /etc/fedora-release ]; then
     # dnf has no update-only verb
     dnf -y install autoconf automake libtool make which $COMPILER \
-        {glib2,libevent,libev}-devel
+        {glib2,libevent,libev}-devel --nogpgcheck --skip-broken
 elif [ -f /etc/redhat-release ]; then
     # rhel/centos
     yum -y install autoconf automake libtool make which $COMPILER \
