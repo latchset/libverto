@@ -29,3 +29,5 @@ tests/child
 tests/signal
 tests/read
 tests/write
+
+INSTALL
