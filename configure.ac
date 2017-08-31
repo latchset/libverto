@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(libverto, 0.2.7)
+AC_INIT(libverto, 0.3.0)
 
 m4_ifdef([AC_USE_SYSTEM_EXTENSIONS],
     [AC_USE_SYSTEM_EXTENSIONS],
