@@ -172,30 +172,26 @@ vresize(void *mem, size_t size)
 }
 
 #ifndef BUILTIN_MODULE
-static int
-int_vasprintf(char **strp, const char *fmt, va_list ap) {
-    va_list apc;
-    int size = 0;
+static char *
+string_aconcat(const char *first, const char *second, const char *third) {
+    char *ret;
+    size_t len;
 
-    va_copy(apc, ap);
-    size = vsnprintf(NULL, 0, fmt, apc);
-    va_end(apc);
+    len = strlen(first) + strlen(second);
+    if (third)
+        len += strlen(third);
 
-    if (size <= 0 || !(*strp = malloc(size + 1)))
-        return -1;
+    ret = malloc(len + 1);
+    if (!ret)
+        return NULL;
 
-    return vsnprintf(*strp, size + 1, fmt, ap);
-}
+    strncpy(ret, first, strlen(first));
+    strncpy(ret + strlen(first), second, strlen(second));
+    if (third)
+        strncpy(ret + strlen(first) + strlen(second), third, strlen(third));
 
-static int
-int_asprintf(char **strp, const char *fmt, ...) {
-    va_list ap;
-    int size = 0;
-
-    va_start(ap, fmt);
-    size = int_vasprintf(strp, fmt, ap);
-    va_end(ap);
-    return size;
+    ret[len] = '\0';
+    return ret;
 }
 
 static char *
@@ -221,8 +217,7 @@ int_get_table_name_from_filename(const char *filename)
     if (tmp) {
         if (strchr(tmp+1, '.')) {
             *strchr(tmp+1, '.') = '\0';
-            if (int_asprintf(&tmp, "%s%s", __str(VERTO_MODULE_TABLE()), tmp + 1) < 0)
-                tmp = NULL;
+            tmp = string_aconcat(__str(VERTO_MODULE_TABLE()), tmp + 1, NULL);
         } else
             tmp = NULL;
     }
@@ -253,7 +248,7 @@ shouldload(void *symb, void *misc, char **err)
     if (table->symb && data->reqsym
             && !module_symbol_is_present(NULL, table->symb)) {
         if (err)
-            int_asprintf(err, "Symbol not found: %s!", table->symb);
+            *err = string_aconcat("Symbol not found: ", table->symb, "!");
         return 0;
     }
 
@@ -362,7 +357,8 @@ do_load_dir(const char *dirname, const char *prefix, const char *suffix,
         if (flen < slen || strcmp(ent->d_name + flen - slen, suffix))
             continue;
 
-        if (int_asprintf(&tmp, "%s/%s", dirname, ent->d_name) < 0)
+        tmp = string_aconcat(dirname, "/", ent->d_name);
+        if (!tmp)
             continue;
 
         success = do_load_file(tmp, reqsym, reqtypes, record);
@@ -439,8 +435,8 @@ load_module(const char *impl, verto_ev_type reqtypes, module_record **record)
             success = do_load_file(impl, 0, reqtypes, record);
         if (!success) {
             /* Try to do a load by the name */
-            tmp = NULL;
-            if (int_asprintf(&tmp, "%s%s%s", prefix, impl, suffix) > 0) {
+            tmp = string_aconcat(prefix, impl, suffix);
+            if (tmp) {
                 success = do_load_file(tmp, 0, reqtypes, record);
                 free(tmp);
             }
