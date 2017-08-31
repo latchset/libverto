@@ -7,8 +7,10 @@ m4_ifdef([AC_USE_SYSTEM_EXTENSIONS],
     [AC_USE_SYSTEM_EXTENSIONS],
     [AC_GNU_SOURCE])
 
-AC_PROG_CC_C99
-CFLAGS="$CFLAGS -Wall -Wextra"
+AC_PROG_CC_C89
+for flag in -std=c89 -Wall -Wextra; do
+  AC_TRY_COMPILE([], [return 0;], [CFLAGS="$CFLAGS $flag"],)
+done
 
 AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([1.11])

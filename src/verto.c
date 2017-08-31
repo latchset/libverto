@@ -604,10 +604,11 @@ verto_free(verto_ctx *ctx)
 void
 verto_cleanup(void)
 {
+    module_record *record;
+
     mutex_lock(&loaded_modules_mutex);
 
-    for (module_record *record = loaded_modules; record;
-         record = record->next) {
+    for (record = loaded_modules; record; record = record->next) {
         module_close(record->dll);
         free(record->filename);
     }
