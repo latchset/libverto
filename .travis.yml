@@ -8,6 +8,7 @@ services:
 
 env:
   - DISTRO=debian:sid COMPILER=gcc
+  - DISTRO=debian:sid COMPILER=gcc BUILTIN=yes
   - DISTRO=fedora:rawhide COMPILER=gcc
   - DISTRO=fedora:rawhide COMPILER=clang
   - DISTRO=centos:7 COMPILER=gcc
@@ -18,4 +19,5 @@ script:
     -v `pwd`:/tmp/build
     -w /tmp/build
     -e COMPILER=$COMPILER
+    -e BUILTIN=$BUILTIN
     $DISTRO /bin/bash -ex .travis.sh

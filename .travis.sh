@@ -17,7 +17,15 @@ else
     false
 fi
 
+CFLAGS="-Werror"
+if [ x$BUILTIN == xyes ]; then
+    CFLAGS+=" -DBUILTIN_MODULE=libev"
+fi
+
 autoreconf -fiv
 ./configure CFLAGS=-Werror CC=$(which $COMPILER)
 make
-make check
+
+if [ x$BUILTIN != xyes ]; then
+    make check
+fi
