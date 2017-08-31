@@ -119,6 +119,8 @@ static int resize_cb_hierarchical;
 
 #ifdef HAVE_PTHREAD
 static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#ifndef NDEBUG
 #define mutex_lock(x) { \
         int c = pthread_mutex_lock(x); \
         if (c != 0) { \
@@ -143,11 +145,17 @@ static pthread_mutex_t loaded_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
         } \
         assert(c == 0); \
     }
-#else
+#else /* NDEBUG */
+#define mutex_lock pthread_mutex_lock
+#define mutex_unlock pthread_mutex_unlock
+#define mutex_destroy pthread_mutex_destroy
+#endif /* NDEBUG */
+
+#else /* HAVE_PTHREAD */
 #define mutex_lock(x)
 #define mutex_unlock(x)
 #define mutex_destroy(x)
-#endif
+#endif /* HAVE_PTHREAD */
 
 #define vfree(mem) vresize(mem, 0)
 static void *
