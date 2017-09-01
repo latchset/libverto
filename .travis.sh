@@ -1,5 +1,10 @@
 #!/bin/bash -ex
 
+CFLAGS="-Werror"
+if [ x$BUILTIN == xyes ]; then
+    CFLAGS+=" -DBUILTIN_MODULE=libev"
+fi
+
 if [ -f /etc/debian_version ]; then
     apt-get update
     apt-get -y install autoconf build-essential libtool $COMPILER \
@@ -12,18 +17,16 @@ elif [ -f /etc/redhat-release ]; then
     # rhel/centos
     yum -y install autoconf automake libtool make which $COMPILER \
         {glib2,libevent}-devel
+
+    # rhel doesn't have libev anyway
+    CFLAGS+=" -std=c89"
 else
     echo "Distro not found!"
     false
 fi
 
-CFLAGS="-Werror"
-if [ x$BUILTIN == xyes ]; then
-    CFLAGS+=" -DBUILTIN_MODULE=libev"
-fi
-
 autoreconf -fiv
-./configure CFLAGS=-Werror CC=$(which $COMPILER)
+./configure CFLAGS="$CFLAGS" CC=$(which $COMPILER)
 make
 
 if [ x$BUILTIN != xyes ]; then
