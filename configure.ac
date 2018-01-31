@@ -8,8 +8,11 @@ m4_ifdef([AC_USE_SYSTEM_EXTENSIONS],
     [AC_GNU_SOURCE])
 
 AC_PROG_CC_C99
+
 for flag in -Wall -Wextra; do
-  AC_TRY_COMPILE([], [return 0;], [CFLAGS="$CFLAGS $flag"],)
+  OLD_CFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS $flag"
+  AC_TRY_COMPILE(, [return 0;], [], [CFLAGS=$OLD_CFLAGS])
 done
 
 AC_CANONICAL_SYSTEM
