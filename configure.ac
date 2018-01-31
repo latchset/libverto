@@ -9,7 +9,7 @@ m4_ifdef([AC_USE_SYSTEM_EXTENSIONS],
 
 AC_PROG_CC_C99
 
-for flag in -Wall -Wextra; do
+for flag in -Wall -Wextra -Wno-cast-function-type; do
   OLD_CFLAGS=$CFLAGS
   CFLAGS="$CFLAGS $flag"
   AC_TRY_COMPILE(, [return 0;], [], [CFLAGS=$OLD_CFLAGS])
