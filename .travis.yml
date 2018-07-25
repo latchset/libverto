@@ -9,8 +9,8 @@ services:
 env:
   - DISTRO=debian:sid COMPILER=gcc
   - DISTRO=debian:sid COMPILER=gcc BUILTIN=yes
-  - DISTRO=fedora:rawhide COMPILER=gcc
-  - DISTRO=fedora:rawhide COMPILER=clang
+  - DISTRO=fedora:latest COMPILER=gcc
+  - DISTRO=fedora:latest COMPILER=clang
   - DISTRO=centos:7 COMPILER=gcc
 
 script:
