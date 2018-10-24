@@ -182,7 +182,7 @@ module_load(const char *filename, const char *symbname,
     intdll = dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
 #endif /* WIN32 */
     if (!intdll)
-        return dllerror();
+        goto fail;
 
     /* Get the module symbol */
 #ifdef WIN32
@@ -190,16 +190,12 @@ module_load(const char *filename, const char *symbname,
 #else /* WIN32 */
     intsym = dlsym(intdll, symbname);
 #endif /* WIN32 */
-    if (!intsym) {
-        module_close(intdll);
-        return dllerror();
-    }
+    if (!intsym)
+        goto fail;
 
     /* Figure out whether or not to load this module */
-    if (!shouldload(intsym, misc, &interr)) {
-        module_close(intdll);
-        return interr;
-    }
+    if (!shouldload(intsym, misc, &interr))
+        goto fail;
 
     /* Re-open the module */
     module_close(intdll);
@@ -208,9 +204,8 @@ module_load(const char *filename, const char *symbname,
 #else  /* WIN32 */
     intdll = dlopen(filename, RTLD_NOW | RTLD_LOCAL);
 #endif /* WIN32 */
-    if (!intdll) {
-        return dllerror();
-    }
+    if (!intdll)
+        goto fail;
 
     /* Get the symbol again */
 #ifdef WIN32
@@ -218,14 +213,18 @@ module_load(const char *filename, const char *symbname,
 #else /* WIN32 */
     intsym = dlsym(intdll, symbname);
 #endif /* WIN32 */
-    if (!intsym) {
-        module_close(intdll);
-        return dllerror();
-    }
+    if (!intsym)
+        goto fail;
 
     if (dll)
         *dll = intdll;
     if (symb)
         *symb = intsym;
     return NULL;
+
+fail:
+    if (!interr)
+        interr = dllerror();
+    module_close(intdll);
+    return interr;
 }
