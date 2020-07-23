@@ -1,0 +1,42 @@
+{
+    "name": "CI",
+    "on": {
+        "push": null,
+        "pull_request": null,
+    },
+    "jobs": {
+        "linux": {
+            "runs-on": "ubuntu-latest",
+            "container": "${{ matrix.distro }}",
+            "strategy": {
+                "fail-fast": false,
+                "matrix": {
+                    "include": [
+                        { "distro": "debian:sid" },
+                        { "distro": "fedora:latest" },
+                        { "distro": "centos:8" },
+                        {
+                            "distro": "fedora:latest",
+                            "compiler": "clang",
+                        },
+                        {
+                            "distro": "debian:sid",
+                            "builtin": "yes",
+                        },
+                    ],
+                },
+            },
+            "steps": [
+                { "uses": "actions/checkout@v2" },
+                {
+                    "name": "Run CI",
+                    "run": "./ci.sh",
+                    "env": {
+                        "COMPILER": "${{ matrix.compiler }}",
+                        "BUILTIN": "${{ matrix.builtin }}",
+                    },
+                },
+            ],
+        },
+    },
+}

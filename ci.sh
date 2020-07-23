@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+COMPILER=${COMPILER:-gcc}
+
 CFLAGS="-Werror"
 if [ x$BUILTIN == xyes ]; then
     CFLAGS+=" -DBUILTIN_MODULE=libev"
