@@ -664,20 +664,28 @@ verto_break(verto_ctx *ctx)
 int
 verto_reinitialize(verto_ctx *ctx)
 {
-    verto_ev *tmp, *next;
+    verto_ev *next, *prev, *cur;
     int error = 1;
 
     if (!ctx)
         return 0;
 
     /* Delete all events, but keep around the forkable ev structs */
-    for (tmp = ctx->events; tmp; tmp = next) {
-        next = tmp->next;
+    prev = NULL;
+    for (cur = ctx->events; cur != NULL; cur = next) {
+        next = cur->next;
 
-        if (tmp->flags & VERTO_EV_FLAG_REINITIABLE)
-            ctx->module->funcs->ctx_del(ctx->ctx, tmp, tmp->ev);
-        else
-            verto_del(tmp);
+        if (cur->flags & VERTO_EV_FLAG_REINITIABLE) {
+            ctx->module->funcs->ctx_del(ctx->ctx, cur, cur->ev);
+            prev = cur;
+            continue;
+        }
+
+        verto_del(cur);
+        if (prev)
+            prev->next = next;
+        if (cur == ctx->events)
+            ctx->events = next;
     }
 
     /* Reinit the loop */
@@ -685,10 +693,10 @@ verto_reinitialize(verto_ctx *ctx)
         ctx->module->funcs->ctx_reinitialize(ctx->ctx);
 
     /* Recreate events that were marked forkable */
-    for (tmp = ctx->events; tmp; tmp = tmp->next) {
-        tmp->actual = make_actual(tmp->flags);
-        tmp->ev = ctx->module->funcs->ctx_add(ctx->ctx, tmp, &tmp->actual);
-        if (!tmp->ev)
+    for (cur = ctx->events; cur != NULL; cur = cur->next) {
+        cur->actual = make_actual(cur->flags);
+        cur->ev = ctx->module->funcs->ctx_add(ctx->ctx, cur, &cur->actual);
+        if (!cur->ev)
             error = 0;
     }
 
