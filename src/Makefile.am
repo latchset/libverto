@@ -1,7 +1,7 @@
 AM_CFLAGS = -Wall -Wdeclaration-after-statement
 AM_LDFLAGS = -version-info 1:0:0
 EXTRA_DIST = libverto.symbols libverto-glib.symbols libverto-libev.symbols \
-             libverto-libevent.symbols libverto-tevent.symbols
+             libverto-libevent.symbols
 
 include_HEADERS     = verto.h verto-module.h
 noinst_HEADERS      = module.h
@@ -22,10 +22,6 @@ endif
 
 if BUILTIN_LIBEVENT
 libverto_la_SOURCES += verto-libevent.c
-endif
-
-if BUILTIN_TEVENT
-libverto_la_SOURCES += verto-tevent.c
 endif
 
 if MODULE_GLIB
@@ -56,14 +52,4 @@ libverto_libevent_la_LIBADD  = libverto.la
 libverto_libevent_la_CFLAGS  = $(AM_CFLAGS) $(libevent_CFLAGS)
 libverto_libevent_la_LDFLAGS = $(AM_LDFLAGS) $(libevent_LIBS) \
                                -export-symbols $(srcdir)/libverto-libevent.symbols
-endif
-
-if MODULE_TEVENT
-lib_LTLIBRARIES += libverto-tevent.la
-include_HEADERS += verto-tevent.h
-libverto_tevent_la_SOURCES = verto-tevent.c
-libverto_tevent_la_LIBADD  = libverto.la
-libverto_tevent_la_CFLAGS  = $(AM_CFLAGS) $(tevent_CFLAGS)
-libverto_tevent_la_LDFLAGS = $(AM_LDFLAGS) $(tevent_LIBS) \
-                             -export-symbols $(srcdir)/libverto-tevent.symbols
 endif

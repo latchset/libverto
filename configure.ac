@@ -80,37 +80,20 @@ AC_ARG_WITH([libevent],
                     *) WITH_LIBEVENT=auto;;
              esac], [WITH_LIBEVENT=auto])
 
-AC_ARG_WITH([tevent],
-            [AS_HELP_STRING([--with-tevent],
-                            [build the tevent library @<:@default: automatic@:>@])],
-            [case $withval in
-                 no) WITH_TEVENT=no;;
-                yes) WITH_TEVENT=yes;;
-                  *) WITH_TEVENT=auto;;
-             esac], [WITH_TEVENT=auto])
-
 # Ensure that if a builtin is chosen only one is built
 BUILTIN_MODULE=
 if test x$WITH_GLIB == xbuiltin; then
   BUILTIN_MODULE=glib
   WITH_LIBEV=no
   WITH_LIBEVENT=no
-  WITH_TEVENT=no
 elif test x$WITH_LIBEV == xbuiltin; then
   BUILTIN_MODULE=libev
   WITH_LIBGLIB=no
   WITH_LIBEVENT=no
-  WITH_TEVENT=no
 elif test x$WITH_LIBEVENT == xbuiltin; then
   BUILTIN_MODULE=libevent
   WITH_LIBGLIB=no
   WITH_LIBEV=no
-  WITH_TEVENT=no
-elif test x$WITH_TEVENT == xbuiltin; then
-  BUILTIN_MODULE=tevent
-  WITH_GLIB=no
-  WITH_LIBEV=no
-  WITH_LIBEVENT=no
 fi
 AC_SUBST([BUILTIN_MODULE], $BUILTIN_MODULE)
 if test x$BUILTIN_MODULE != x; then
@@ -122,31 +105,21 @@ if test x$WITH_GLIB == xdefault; then
   AC_DEFINE([DEFUALT_MODULE], [glib])
   test x$WITH_LIBEV    == xdefault && WITH_LIBEV=yes
   test x$WITH_LIBEVENT == xdefault && WITH_LIBEVENT=yes
-  test x$WITH_TEVENT   == xdefault && WITH_TEVENT=yes
 fi
 if test x$WITH_LIBEV == xdefault; then
   AC_DEFINE([DEFUALT_MODULE], [libev])
   test x$WITH_LIBGLIB  == xdefault && WITH_GLIB=yes
   test x$WITH_LIBEVENT == xdefault && WITH_LIBEVENT=yes
-  test x$WITH_TEVENT   == xdefault && WITH_TEVENT=yes
 fi
 if test x$WITH_LIBEVENT == xdefault; then
   AC_DEFINE([DEFUALT_MODULE], [libevent])
   test x$WITH_GLIB     == xdefault && WITH_GLIB=yes
   test x$WITH_LIBEV    == xdefault && WITH_LIBEV=yes
-  test x$WITH_TEVENT   == xdefault && WITH_TEVENT=yes
-fi
-if test x$WITH_TEVENT == xdefault; then
-  AC_DEFINE([DEFUALT_MODULE], [tevent])
-  test x$WITH_GLIB     == xdefault && WITH_GLIB=yes
-  test x$WITH_LIBEV    == xdefault && WITH_LIBEV=yes
-  test x$WITH_LIBEVENT == xdefault && WITH_LIBEVENT=yes
 fi
 
 BUILD_GLIB=no
 BUILD_LIBEV=no
 BUILD_LIBEVENT=no
-BUILD_TEVENT=no
 
 if test x$WITH_GLIB != xno; then
   PKG_CHECK_MODULES([glib], [glib-2.0], [BUILD_GLIB=$WITH_GLIB],
@@ -178,22 +151,12 @@ if test x$WITH_LIBEVENT != xno; then
   fi
 fi
 
-if test x$WITH_TEVENT != xno; then
-  PKG_CHECK_MODULES([tevent], [tevent], [BUILD_TEVENT=$WITH_TEVENT],
-                    [test x$WITH_TEVENT != xauto && AC_MSG_ERROR("tevent not found")])
-  if test x$BUILD_TEVENT == xauto; then
-    BUILD_TEVENT=yes
-  fi
-fi
-
 AM_CONDITIONAL([MODULE_GLIB],      [test x$BUILTIN_MODULE == x && test x$BUILD_GLIB     != xno])
 AM_CONDITIONAL([MODULE_LIBEV],     [test x$BUILTIN_MODULE == x && test x$BUILD_LIBEV    != xno])
 AM_CONDITIONAL([MODULE_LIBEVENT],  [test x$BUILTIN_MODULE == x && test x$BUILD_LIBEVENT != xno])
-AM_CONDITIONAL([MODULE_TEVENT],    [test x$BUILTIN_MODULE == x && test x$BUILD_TEVENT   != xno])
 AM_CONDITIONAL([BUILTIN_GLIB],     [test x$BUILTIN_MODULE == xglib])
 AM_CONDITIONAL([BUILTIN_LIBEV],    [test x$BUILTIN_MODULE == xlibev])
 AM_CONDITIONAL([BUILTIN_LIBEVENT], [test x$BUILTIN_MODULE == xlibevent])
-AM_CONDITIONAL([BUILTIN_TEVENT],   [test x$BUILTIN_MODULE == xtevent])
 
 AC_MSG_NOTICE()
 AC_MSG_NOTICE([BUILD CONFIGURATION])
@@ -201,7 +164,6 @@ AC_MSG_NOTICE(AS_HELP_STRING([pthread], [$BUILD_PTHREAD]))
 AC_MSG_NOTICE(AS_HELP_STRING([glib], [$BUILD_GLIB]))
 AC_MSG_NOTICE(AS_HELP_STRING([libev], [$BUILD_LIBEV]))
 AC_MSG_NOTICE(AS_HELP_STRING([libevent], [$BUILD_LIBEVENT]))
-AC_MSG_NOTICE(AS_HELP_STRING([tevent], [$BUILD_TEVENT]))
 AC_MSG_NOTICE()
 
 AC_CONFIG_FILES(Makefile
@@ -210,6 +172,5 @@ AC_CONFIG_FILES(Makefile
                 libverto-glib.pc
                 libverto-libev.pc
                 libverto-libevent.pc
-                libverto-tevent.pc
                 libverto.pc)
 AC_OUTPUT

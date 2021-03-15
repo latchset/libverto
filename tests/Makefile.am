@@ -12,9 +12,6 @@ endif
 if MODULE_LIBEVENT
 AM_CFLAGS += -DHAVE_LIBEVENT=1 
 endif
-if MODULE_TEVENT
-AM_CFLAGS += -DHAVE_TEVENT=1 
-endif
 
 check_PROGRAMS = timeout idle child signal read write
 EXTRA_DIST     = test.h

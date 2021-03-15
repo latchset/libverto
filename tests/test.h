@@ -49,9 +49,6 @@ static char *MODULES[] = {
 #ifdef HAVE_LIBEVENT
     "libevent",
 #endif
-#ifdef HAVE_TEVENT
-    "tevent",
-#endif
     NULL,
     NULL,
 };

@@ -13,9 +13,5 @@ if MODULE_LIBEVENT
 pkgconfig_DATA += libverto-libevent.pc
 endif
 
-if MODULE_TEVENT
-pkgconfig_DATA += libverto-tevent.pc
-endif
-
 ACLOCAL_AMFLAGS=-I m4
 SUBDIRS=src tests
