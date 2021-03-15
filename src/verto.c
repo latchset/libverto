@@ -583,6 +583,8 @@ verto_set_allocator(void *(*resize)(void *mem, size_t size),
 void
 verto_free(verto_ctx *ctx)
 {
+    verto_ev *cur, *next;
+
     if (!ctx)
         return;
 
@@ -591,8 +593,12 @@ verto_free(verto_ctx *ctx)
         return;
 
     /* Cancel all pending events */
-    while (ctx->events)
-        verto_del(ctx->events);
+    next = NULL;
+    for (cur = ctx->events; cur != NULL; cur = next) {
+        next = cur->next;
+        verto_del(cur);
+    }
+    ctx->events = NULL;
 
     /* Free the private */
     if (!ctx->deflt || !ctx->module->funcs->ctx_default)
