@@ -610,6 +610,9 @@ verto_free(verto_ctx *ctx)
 void
 verto_cleanup(void)
 {
+#ifdef BUILTIN_MODULE
+    return;
+#else
     module_record *record;
 
     mutex_lock(&loaded_modules_mutex);
@@ -624,6 +627,7 @@ verto_cleanup(void)
 
     mutex_unlock(&loaded_modules_mutex);
     mutex_destroy(&loaded_modules_mutex);
+#endif
 }
 
 void
