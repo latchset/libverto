@@ -14,7 +14,6 @@
                     "include": [
                         { "distro": "debian:sid" },
                         { "distro": "fedora:latest" },
-                        { "distro": "centos:8" },
                         {
                             "distro": "fedora:latest",
                             "compiler": "clang",
